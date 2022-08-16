@@ -1,0 +1,45 @@
+version: '3'
+services:
+  mongo:
+    image: mongo
+    container_name: "fund_mongo"
+    restart: always
+    networks:
+      - default
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:alpine
+    container_name: "fund_redis"
+    restart: always
+    networks:
+      - default
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+
+#  web:
+#    container_name: "fund"
+#    build: .
+#    restart: always
+#    ports:
+#      - "10888:10888"
+#    depends_on:
+#      - redis
+#      - mongo
+#    networks:
+#      - default
+
+networks:
+  default:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data:
