@@ -5,12 +5,11 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
+	"fund/util/mongox"
 	"fund/util/pool"
 	"math"
-	"sync"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Stockx struct {
@@ -21,10 +20,15 @@ type Stockx struct {
 }
 
 var (
-	ctx      = context.Background()
-	KlineMap = sync.Map{}
+	ctx   = context.Background()
+	items = initStock()
 )
 
+func init() {
+	initKline()
+}
+
+// init stocks
 func initStock() []Stockx {
 	var data []Stockx
 	db.Stock.Find(ctx, bson.M{
@@ -33,13 +37,12 @@ func initStock() []Stockx {
 	return data
 }
 
+// init klines
 func initKline() {
 	p := pool.NewPool(8)
-	items := initStock()
-
 	for _, i := range items {
 		p.NewTask(func() {
-			KlineMap.Store(i.Id, i.getKDJKline())
+			klineMap.Store(i.Id, i.getKDJKline())
 		})
 	}
 	p.Wait()
@@ -47,9 +50,9 @@ func initKline() {
 
 func (s *Stockx) getKDJKline() []model.Kline {
 	var data []model.Kline
-	db.KlineDB.Collection(util.CodeToInt(s.Id)).Aggregate(ctx, mongo.Pipeline{
-		bson.D{{Key: "$match", Value: bson.M{"_id.code": s.Id}}},
-		bson.D{{Key: "$sort", Value: bson.M{"_id.time": 1}}},
-	}).All(&data)
+	db.KlineDB.Collection(util.CodeToInt(s.Id)).Aggregate(ctx, mongox.Pipeline().
+		Match(bson.M{"_id.code": s.Id}).
+		Sort(bson.M{"_id.time": 1}).
+		Do()).All(&data)
 	return data
 }

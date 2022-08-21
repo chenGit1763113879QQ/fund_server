@@ -22,7 +22,6 @@ const (
 var (
 	ctx = context.Background()
 
-	CacheDB *redis.Client // 缓存
 	LimitDB *redis.Client // 流量控制
 
 	FundDB   *qmgo.Database
@@ -73,8 +72,5 @@ func init() {
 	// Redis
 	LimitDB = redis.NewClient(&redis.Options{
 		Addr: redisHost, DB: 1,
-	})
-	CacheDB = redis.NewClient(&redis.Options{
-		Addr: redisHost, DB: 0,
 	})
 }

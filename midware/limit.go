@@ -8,14 +8,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/time/rate"
 )
 
-var (
-	json  = jsoniter.ConfigCompatibleWithStandardLibrary
-	limit = rate.NewLimiter(20, 1000)
-)
+var limit = rate.NewLimiter(20, 1000)
 
 // 流量控制
 func FlowController(c *gin.Context) {

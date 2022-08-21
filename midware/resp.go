@@ -3,6 +3,7 @@ package midware
 import (
 	"net/http"
 
+	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/zstd"
 	"go.mongodb.org/mongo-driver/bson"
@@ -56,6 +57,6 @@ func Warning(c *gin.Context, msg string) {
 }
 
 func Zip(data any) []byte {
-	src, _ := json.Marshal(&data)
+	src, _ := sonic.Marshal(&data)
 	return encoder.EncodeAll(src, nil)
 }

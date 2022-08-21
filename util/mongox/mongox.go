@@ -6,9 +6,7 @@ Desc: 基于 mongo 的 pipeline 链式调用封装
 */
 package mongox
 
-import (
-	"go.mongodb.org/mongo-driver/bson"
-)
+import "go.mongodb.org/mongo-driver/bson"
 
 type options struct {
 	opts []bson.D

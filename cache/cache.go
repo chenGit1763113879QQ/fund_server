@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	Stock = NewStockMap()
+	Stock = &StockMap{data: make(map[string]model.Stock)}
 
 	Numbers    sync.Map
 	MainFlow   any
@@ -19,11 +19,6 @@ var (
 type StockMap struct {
 	data map[string]model.Stock
 	mu   sync.RWMutex
-}
-
-func NewStockMap() *StockMap {
-	m := &StockMap{data: make(map[string]model.Stock)}
-	return m
 }
 
 func (s *StockMap) Exist(key string) bool {

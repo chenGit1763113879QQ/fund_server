@@ -26,8 +26,7 @@ func GetComments(c *gin.Context) {
 			"user._id": 1, "user.name": 1, "likes": 1,
 		}).
 		Sort(bson.M{"createAt": -1}).
-		Limit(20).
-		Do()).All(&data)
+		Limit(20).Do()).All(&data)
 
 	midware.Auto(c, err, data)
 }
@@ -37,7 +36,9 @@ func WriteComment(c *gin.Context) {
 	req := new(model.Comment)
 	req.Uid, req.Aid = getUserArtId(c)
 	req.CreateAt = time.Now()
+
 	c.ShouldBind(req)
+	
 
 	if _, err := db.Comment.InsertOne(ctx, req); err != nil {
 		midware.Error(c, err)

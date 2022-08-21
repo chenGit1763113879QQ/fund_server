@@ -2,32 +2,33 @@ package pro
 
 import (
 	"fund/db"
-	"fund/util"
+	"fund/model"
 	"fund/util/pool"
 	"time"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var klineCache map[string]dataframe.DataFrame
+func timeHist(k []model.Kline) []time.Time {
+	arr := make([]time.Time, len(k))
+	for i := range k {
+		arr[i] = k[i].Time
+	}
+	return arr
+}
+
+func closeHist(k []model.Kline) []float64 {
+	arr := make([]float64, len(k))
+	for i := range k {
+		arr[i] = k[i].Close
+	}
+	return arr
+}
 
 // 执行预测
 func PredictStock() {
 	db.Predict.DropCollection(ctx)
-	items := initStock()
-
-	// 加载缓存
-	klineCache = make(map[string]dataframe.DataFrame)
-	for _, i := range items {
-		df := getKline(i.Id)
-		// 验证合法
-		if df.Nrow() >= 30 {
-			klineCache[i.Id] = df
-		}
-	}
 
 	p := pool.NewPool(5)
 	for i := range items {
@@ -43,27 +44,28 @@ func PredictStock() {
 
 // 预测算法
 func predict(code string, days int) {
-	src := klineCache[code]
-	if src.Nrow() < days {
+	src := klineMap.Load(code)
+	if len(src) < days {
 		return
 	}
 
 	// 矩阵转数组
-	arr := src.Col("close").Float()[src.Nrow()-days:]
+	arr := closeHist(src)[len(src)-days:]
 	arr = oneness(arr)
 
 	// 结果集
 	results := make([]map[string]any, 0)
 
-	for matchCode, match := range klineCache {
-		if match.Nrow() < days {
-			continue
+	klineMap.Range(func(matchCode string, match []model.Kline) {
+		if len(match) < days {
+			return
 		}
-		dates := match.Col("time").Records()
-		closeLine := match.Col("close").Float()
+
+		dates := timeHist(match)
+		closeLine := closeHist(match)
 
 		// 移动窗口
-		for i := 0; i+days+5 < match.Nrow(); i += 2 {
+		for i := 0; i+days+5 < len(match); i += 2 {
 			// 行情矩阵
 			mat := make([]float64, days)
 			copy(mat, closeLine[i:i+days])
@@ -78,7 +80,8 @@ func predict(code string, days int) {
 				})
 			}
 		}
-	}
+	})
+
 	// 保存标准差最小的五条数据
 	res := dataframe.LoadMaps(results).Arrange(dataframe.Order{Colname: "标准差", Reverse: false})
 	if res.Nrow() > 5 {
@@ -86,24 +89,6 @@ func predict(code string, days int) {
 	} else {
 		db.Predict.InsertMany(ctx, res.Maps())
 	}
-
-}
-
-// 获取k线数据
-func getKline(code string) dataframe.DataFrame {
-	var kline []map[string]interface{}
-
-	t, _ := time.Parse("2006-01-02", "2017-06-01")
-	db.KlineDB.Collection(util.CodeToInt(code)).Aggregate(ctx, mongo.Pipeline{
-		bson.D{{"$match", bson.M{"code": code, "time": bson.M{"$gt": t}}}},
-		bson.D{{"$project", bson.M{
-			"time": bson.M{"$dateToString": bson.M{"format": "%Y-%m-%d", "date": "$time"}},
-			"_id":  0, "close": 1,
-		}}},
-		bson.D{{"$sort", bson.M{"time": 1}}},
-	}).All(&kline)
-
-	return dataframe.LoadMaps(kline)
 }
 
 // 归一化
