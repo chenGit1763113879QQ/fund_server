@@ -26,6 +26,16 @@ func NewStockMap() *StockMap {
 	return m
 }
 
+func (s *StockMap) Exist(key string) bool {
+	if key == "" {
+		return false
+	}
+	s.mu.RLock()
+	_, ok := s.data[key]
+	s.mu.RUnlock()
+	return ok
+}
+
 func (s *StockMap) Load(key string) model.Stock {
 	s.mu.RLock()
 	a := s.data[key]

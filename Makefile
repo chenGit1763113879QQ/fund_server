@@ -1,5 +1,5 @@
 run:
-	go run -tags=jsoniter main.go
+	go run main.go
 
 build:
-	go build -tags=jsoniter .
+	go build .

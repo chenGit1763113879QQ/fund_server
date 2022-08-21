@@ -2,7 +2,7 @@
 Name: mongox
 Auth: lucario
 Date: 2022/08/12
-Desc: 基于 qmgo 的 pipeline 链式调用封装
+Desc: 基于 mongo 的 pipeline 链式调用封装
 */
 package mongox
 
