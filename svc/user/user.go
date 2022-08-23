@@ -9,7 +9,6 @@ import (
 	"fund/db"
 	"fund/midware"
 	"fund/model"
-	"fund/util"
 	"math/rand"
 	"net/smtp"
 	"time"
@@ -59,7 +58,6 @@ func GetInfo(c *gin.Context) {
 // 登录
 func Login(c *gin.Context) {
 	form := new(model.LoginForm)
-	form.IP = c.ClientIP()
 
 	if err := c.ShouldBind(form); err != nil {
 		midware.Error(c, err)
@@ -79,9 +77,6 @@ func Login(c *gin.Context) {
 	}
 
 	// 登录成功
-	db.User.UpdateOne(ctx, bson.M{"email": form.Email}, bson.M{"$set": bson.M{
-		"updateAt": time.Now(), "ip": ipLocation(form.IP),
-	}})
 	token, err := generateToken(user.Id.Hex())
 
 	midware.Auto(c, err, token)
@@ -90,7 +85,6 @@ func Login(c *gin.Context) {
 // 注册
 func Register(c *gin.Context) {
 	form := new(model.RegisterForm)
-	form.IP = c.ClientIP()
 
 	if err := c.ShouldBind(form); err != nil {
 		midware.Error(c, err)
@@ -108,7 +102,6 @@ func Register(c *gin.Context) {
 		Name:     "用户" + uuid.NewString()[:8],
 		Email:    form.Email,
 		Password: sha256Encode(form.Password),
-		Ip:       ipLocation(form.IP),
 	}
 
 	res, err := db.User.InsertOne(ctx, user)
@@ -131,22 +124,6 @@ func Register(c *gin.Context) {
 	token, err := generateToken(res.InsertedID.(pr.ObjectID).Hex())
 
 	midware.Auto(c, err, token)
-}
-
-// 更新用户信息
-func UpdateInfo(c *gin.Context) {
-	form := new(model.UpdateForm)
-	form.Id = c.MustGet("id").(pr.ObjectID)
-
-	if err := c.ShouldBind(form); err != nil {
-		midware.Error(c, err)
-		return
-	}
-
-	form.Password = sha256Encode(form.Password)
-	err := db.User.UpdateOne(ctx, bson.M{"_id": form.Id}, bson.M{"$set": form})
-
-	midware.Auto(c, err, nil, "修改成功")
 }
 
 // 发送验证码
@@ -202,12 +179,4 @@ func sha256Encode(pass string) string {
 	m := sha256.New()
 	m.Write([]byte(pass))
 	return hex.EncodeToString(m.Sum(nil))
-}
-
-// ip属地查询
-func ipLocation(ip string) model.IpLocation {
-	var loc model.IpLocation
-	body, _ := util.GetAndRead(fmt.Sprintf("http://whois.pconline.com.cn/ipJson.jsp?ip=%s&json=true", ip))
-	json.Unmarshal(body, &loc)
-	return loc
 }

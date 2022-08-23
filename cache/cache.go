@@ -26,16 +26,15 @@ func (s *StockMap) Exist(key string) bool {
 		return false
 	}
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	_, ok := s.data[key]
-	s.mu.RUnlock()
 	return ok
 }
 
 func (s *StockMap) Load(key string) model.Stock {
 	s.mu.RLock()
-	a := s.data[key]
-	s.mu.RUnlock()
-	return a
+	defer s.mu.RUnlock()
+	return s.data[key]
 }
 
 func (s *StockMap) Loads(keys []string) []model.Stock {
@@ -50,14 +49,14 @@ func (s *StockMap) Loads(keys []string) []model.Stock {
 
 func (s *StockMap) Store(key string, value model.Stock) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.data[key] = value
-	s.mu.Unlock()
 }
 
 func (s *StockMap) Range(f func(k string, v model.Stock)) {
 	s.mu.RLock()
+	defer s.mu.RUnlock()
 	for k, v := range s.data {
 		f(k, v)
 	}
-	s.mu.RUnlock()
 }

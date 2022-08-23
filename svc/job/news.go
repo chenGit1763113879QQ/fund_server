@@ -8,22 +8,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	pr "go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-var NewsID pr.ObjectID
-
-func init() {
-	db.User.InsertOne(ctx, &model.User{
-		Email:    "lucario@example.com",
-		Name:     "7*24资讯",
-		Password: "w&vme@.W=dd_wAdv",
-	})
-
-	user := new(model.User)
-	db.User.Find(ctx, bson.M{"name": "7*24资讯"}).One(&user)
-	NewsID = user.Id
-}
 
 // 获取新闻资讯
 func getNews() {
@@ -75,14 +60,9 @@ func getNews() {
 			}
 			t, _ := time.ParseInLocation("2006-01-02 15:04:05", n.Datetime, location)
 			db.Article.InsertOne(ctx, &model.Article{
-				Uid:      NewsID,
 				Title:    n.Title,
 				Content:  n.Content,
-				Reads:    make([]pr.ObjectID, 0),
-				Likes:    make([]pr.ObjectID, 0),
-				Colls:    make([]pr.ObjectID, 0),
 				CreateAt: t,
-				Type:     2,
 				Tag:      codes,
 			})
 		}

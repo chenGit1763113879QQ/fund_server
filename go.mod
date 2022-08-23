@@ -3,12 +3,12 @@ module fund
 go 1.19
 
 require (
-	github.com/bytedance/sonic v1.3.5
+	github.com/bytedance/sonic v1.4.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-gota/gota v0.12.0
 	github.com/go-redis/redis/v8 v8.11.5
-	github.com/gocarina/gocsv v0.0.0-20220729221910-a7386ae0b221
+	github.com/gocarina/gocsv v0.0.0-20220823132111-71f3a5cb2654
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
@@ -48,10 +48,10 @@ require (
 	github.com/xdg-go/scram v1.1.1 // indirect
 	github.com/xdg-go/stringprep v1.0.3 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	golang.org/x/arch v0.0.0-20220818193441-13eedde4113c // indirect
+	golang.org/x/arch v0.0.0-20220823144127-ada1728cebaa // indirect
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/net v0.0.0-20220812174116-3211cb980234 // indirect
+	golang.org/x/net v0.0.0-20220822230855-b0a4917ee28c // indirect
 	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde // indirect
 	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
 	golang.org/x/text v0.3.7 // indirect

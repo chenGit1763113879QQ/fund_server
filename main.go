@@ -33,7 +33,6 @@ func main() {
 
 	User.Use(midware.Authorize)
 	User.GET("/info", user.GetInfo)
-	User.PUT("/info", user.UpdateInfo)
 
 	api.Use(midware.Authorize)
 	ws.Use(midware.Authorize)
@@ -65,19 +64,7 @@ func main() {
 
 	Article := api.Group("/article")
 	Article.GET("/:id", art.GetArticle)
-	Article.POST("/publish", art.NewArticle)
-	Article.DELETE("/:id", art.DelArticle)
-	Article.GET("/list/mine", art.MyArticles)
-	Article.GET("/list/hots", art.GetHots)
 	Article.GET("/list/news", art.GetNews)
-	Article.PUT("/like/:id", art.Like)
-	Article.DELETE("/like/:id", art.UnLike)
-	Article.GET("/coll/:id", art.CollList)
-	Article.PUT("/coll/:id", art.Collect)
-	Article.DELETE("/coll/:id", art.UnCollect)
-	Article.GET("/comment/:id", art.GetComments)
-	Article.POST("/comment/:id", art.WriteComment)
-	Article.DELETE("/comment/:cid", art.DelComment)
 
 	r.NoRoute(func(c *gin.Context) {
 		midware.Error(c, errors.New("page not found"), http.StatusNotFound)
