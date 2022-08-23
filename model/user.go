@@ -24,11 +24,6 @@ type LoginForm struct {
 	Password string `json:"password" binding:"min=6,max=16"`
 }
 
-type ArtOpt struct {
-	Code string `form:"code"`
-	Page int    `form:"page"`
-}
-
 type Article struct {
 	field.DefaultField `bson:",inline"`
 	Title              string    `json:"title"`

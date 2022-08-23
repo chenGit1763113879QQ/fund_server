@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fund/midware"
-	"fund/svc/art"
 	"fund/svc/stock"
 	"fund/svc/user"
 	"net/http"
@@ -30,6 +29,9 @@ func main() {
 	User.GET("/emailCode", user.EmailCode)
 	User.POST("/login", user.Login)
 	User.POST("/newAuth", user.Register)
+
+	User.GET("/:id", user.GetArticle)
+	User.GET("/list/news", user.GetNews)
 
 	User.Use(midware.Authorize)
 	User.GET("/info", user.GetInfo)
@@ -61,10 +63,6 @@ func main() {
 
 	market := api.Group("/market")
 	market.GET("/bk", stock.DetailBK)
-
-	Article := api.Group("/article")
-	Article.GET("/:id", art.GetArticle)
-	Article.GET("/list/news", art.GetNews)
 
 	r.NoRoute(func(c *gin.Context) {
 		midware.Error(c, errors.New("page not found"), http.StatusNotFound)
