@@ -28,14 +28,14 @@ var (
 	KlineDB  *qmgo.Database
 	MinuteDB *qmgo.Database
 
-	Stock   *qmgo.Collection // 股票行情
-	Predict *qmgo.Collection // 股票预测
-	Events  *qmgo.Collection // 重大事项
-	Fina    *qmgo.Collection // 财务指标
+	Stock    *qmgo.Collection // 行情
+	Predict  *qmgo.Collection // 预测
+	Backtest *qmgo.Collection // 回测
+	Events   *qmgo.Collection // 重大事项
+	Fina     *qmgo.Collection // 财务指标
 
 	User    *qmgo.Collection // 用户
 	Article *qmgo.Collection // 文章
-	Comment *qmgo.Collection // 评论
 )
 
 // init database
@@ -53,6 +53,7 @@ func init() {
 	Stock.EnsureIndexes(ctx, nil, []string{"marketType", "type"})
 
 	Predict = FundDB.Collection("predict")
+	Backtest = FundDB.Collection("backtest")
 
 	Events = FundDB.Collection("events")
 	Events.EnsureIndexes(ctx, nil, []string{"type", "ts_code", "ann_date"})
@@ -65,9 +66,6 @@ func init() {
 
 	Article = FundDB.Collection("article")
 	Article.EnsureIndexes(ctx, []string{"uid,title"}, []string{"createAt"})
-
-	Comment = FundDB.Collection("comment")
-	Comment.EnsureIndexes(ctx, nil, []string{"uid", "aid"})
 
 	// Redis
 	LimitDB = redis.NewClient(&redis.Options{

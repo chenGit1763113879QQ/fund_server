@@ -61,6 +61,16 @@ func (p *options) Skip(skip int) *options {
 	return p
 }
 
+func (p *options) Bucket(groupBy string, boundaries bson.A, defaults string, output bson.M) *options {
+	p.opts = append(p.opts, bson.D{{Key: "$bucket", Value: bson.M{
+		"groupBy":    groupBy,
+		"boundaries": boundaries,
+		"default":    defaults,
+		"output":     output,
+	}}})
+	return p
+}
+
 func (p *options) Do() []bson.D {
 	return p.opts
 }

@@ -74,7 +74,7 @@ func getRealStock(m *model.Market) {
 	for {
 		freq := m.Freq()
 		if freq == 2 && m.Type == "stock" {
-			log.Info().Str("market", m.Name).Int("freq", freq).Msg("update stock")
+			log.Info().Str("market", m.Name).Int("freq", freq).Msg("updating stock")
 		}
 
 		newUrl := url + strings.Join(stk.GetJsonFields(freq), ",")
@@ -128,7 +128,6 @@ func getRealStock(m *model.Market) {
 		if m.Type == "stock" {
 			Cond.Broadcast()
 		}
-
 		m.Incr()
 
 		for !m.Status {

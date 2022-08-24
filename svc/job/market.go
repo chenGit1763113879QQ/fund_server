@@ -13,7 +13,6 @@ import (
 	"github.com/go-gota/gota/dataframe"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const StkHost = "https://flash-api.xuangubao.cn/api"
@@ -104,16 +103,14 @@ func getDistribution(market string) {
 	var data []struct {
 		Count int64 `bson:"count"`
 	}
-	db.Stock.Aggregate(ctx, mongo.Pipeline{
-		bson.D{{"$match", bson.M{"marketType": market, "type": "stock", "price": bson.M{"$gt": 0}}}},
-		// 统计函数
-		bson.D{{"$bucket", bson.M{
-			"groupBy":    "$pct_chg",
-			"boundaries": bson.A{-99, -10, -7, -5, -3, -0.0001, 0.0001, 3, 5, 7, 10, 999},
-			"default":    "Other",
-			"output":     bson.M{"count": bson.M{"$sum": 1}},
-		}}},
-	}).All(&data)
+	db.Stock.Aggregate(ctx, mongox.Pipeline().
+		Match(bson.M{"marketType": market, "type": "stock", "price": bson.M{"$gt": 0}}).
+		Bucket(
+			"$pct_chg",
+			bson.A{-99, -10, -7, -5, -3, -0.0001, 0.0001, 3, 5, 7, 10, 999},
+			"Other",
+			bson.M{"count": bson.M{"$sum": 1}}).
+		Do()).All(&data)
 
 	label := []string{"<10", "<7", "7-5", "5-3", "3-0", "0", "0-3", "3-5", "5-7", ">7", ">10"}
 	nums := make([]int64, 11)
@@ -201,16 +198,4 @@ func getMarketInfo() {
 	}
 	sonic.Unmarshal(body, &data)
 	cache.MarketHot = data.Data
-}
-
-// get stock pool
-func stockPool() {
-	// poolName := []string{"limit_up", "yesterday_limit_up", "super_stock"}
-	// for _, pool := range poolName {
-	// 	url := StkHost + "/pool/detail?pool_name=" + pool
-	// 	body, _ := util.GetAndRead(url)
-
-	// 	var data []bson.M
-	// 	json.Get(body, "data").ToVal(&data)
-	// }
 }

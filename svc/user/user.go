@@ -17,7 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jordan-wright/email"
-	jsoniter "github.com/json-iterator/go"
 	"go.mongodb.org/mongo-driver/bson"
 	pr "go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -30,7 +29,6 @@ const (
 var (
 	jwtSecret = []byte("fLA0Jx@2fs6X!WZu")
 	ctx       = context.Background()
-	json      = jsoniter.ConfigCompatibleWithStandardLibrary
 )
 
 // 生成token
@@ -132,7 +130,7 @@ func EmailCode(c *gin.Context) {
 
 	// 是否存在缓存
 	res, err := db.LimitDB.Exists(ctx, "email:"+receiver).Result()
-	if res >= 1 {
+	if res >= 1 || err != nil {
 		midware.Error(c, errors.New("请不要频繁请求该接口"))
 		return
 	}

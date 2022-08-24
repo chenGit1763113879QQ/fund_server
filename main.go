@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fund/midware"
+	"fund/svc/pro"
 	"fund/svc/stock"
 	"fund/svc/user"
 	"net/http"
@@ -20,49 +21,48 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
+	pro.Test()
+
 	r.Use(midware.FlowController)
 
 	api := r.Group("/api")
 	ws := r.Group("/ws")
 
-	User := api.Group("/user")
-	User.GET("/emailCode", user.EmailCode)
-	User.POST("/login", user.Login)
-	User.POST("/newAuth", user.Register)
-
-	User.GET("/:id", user.GetArticle)
-	User.GET("/list/news", user.GetNews)
-
-	User.Use(midware.Authorize)
-	User.GET("/info", user.GetInfo)
+	api.Group("/user").
+		GET("/emailCode", user.EmailCode).
+		POST("/login", user.Login).
+		POST("/newAuth", user.Register).
+		GET("/info", midware.Authorize, user.GetInfo)
 
 	api.Use(midware.Authorize)
 	ws.Use(midware.Authorize)
 
-	wsStock := ws.Group("/stock")
-	wsStock.GET("/list", stock.ConnectCList)
-	wsStock.GET("/detail", stock.ConnectItems)
-	wsStock.GET("/market", stock.ConnectMarket)
+	ws.Group("/stock").
+		GET("/list", stock.ConnectCList).
+		GET("/detail", stock.ConnectItems).
+		GET("/market", stock.ConnectMarket)
 
-	stk := api.Group("/stock")
-	stk.GET("/search", stock.Search)
-	stk.GET("/all", stock.GetAllStock)
-	stk.GET("/list", stock.GetStockList)
-	stk.GET("/chart/kline", stock.GetKline)
-	stk.GET("/predict", stock.PredictKline)
-	stk.GET("/center/:path", stock.DataCenter)
+	api.Group("/stock").
+		GET("/search", stock.Search).
+		GET("/all", stock.GetAllStock).
+		GET("/list", stock.GetStockList).
+		GET("/chart/kline", stock.GetKline).
+		GET("/predict", stock.PredictKline).
+		GET("/center/:path", stock.DataCenter).
+		GET("/group", stock.GetGroups).
+		POST("/group", stock.AddGroup).
+		PUT("/group", stock.ChangeGroup).
+		DELETE("/group", stock.RemGroup).
+		POST("/active", stock.GetActiveList).
+		PUT("/active", stock.PutActiveList).
+		GET("/group/in", stock.InGroup)
 
-	stk.GET("/group", stock.GetGroups)
-	stk.POST("/group", stock.AddGroup)
-	stk.PUT("/group", stock.ChangeGroup)
-	stk.DELETE("/group", stock.RemGroup)
+	api.Group("/market").
+		GET("/bk", stock.DetailBK)
 
-	stk.POST("/active", stock.GetActiveList)
-	stk.PUT("/active", stock.PutActiveList)
-	stk.GET("/group/in", stock.InGroup)
-
-	market := api.Group("/market")
-	market.GET("/bk", stock.DetailBK)
+	api.Group("/article").
+		GET("/:id", user.GetArticle).
+		GET("/list/news", user.GetNews)
 
 	r.NoRoute(func(c *gin.Context) {
 		midware.Error(c, errors.New("page not found"), http.StatusNotFound)

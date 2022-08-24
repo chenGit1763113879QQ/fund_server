@@ -3,7 +3,6 @@ package util
 import (
 	"bytes"
 	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -63,10 +62,10 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 	if fields != nil {
 		req["fields"] = fields
 	}
-	paramStr, _ := sonic.Marshal(req)
+	param, _ := sonic.Marshal(req)
 
 	// post request
-	res, err := http.Post("https://api.tushare.pro", "application/json", bytes.NewReader(paramStr))
+	res, err := http.Post("https://api.tushare.pro", "application/json", bytes.NewReader(param))
 	if err != nil {
 		return err
 	}
@@ -84,6 +83,7 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 		} `json:"data"`
 		Msg string `json:"msg"`
 	}
+
 	if err = sonic.Unmarshal(body, &data); err != nil {
 		return err
 	}
@@ -111,11 +111,12 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 }
 
 func CodeToInt(code string) string {
-	h := md5.New()
-	h.Write([]byte(code))
-	var dst []byte
-	hex.Encode(dst, h.Sum(nil))
-	return fmt.Sprintf("%c%c", dst[0]%8, dst[1])
+	sig := md5.Sum([]byte(code))
+	sum := byte(0)
+	for _, c := range sig {
+		sum += c
+	}
+	return fmt.Sprintf("%d", sum%128)
 }
 
 func IsChinese(str string) bool {

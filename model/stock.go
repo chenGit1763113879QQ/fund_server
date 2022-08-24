@@ -310,7 +310,7 @@ type KlineParams struct {
 }
 
 type Kline struct {
-	Time time.Time `bson:"_id.time"`
+	Time time.Time `bson:"time"`
 
 	Close float64 `bson:"close_qfq"`
 
@@ -318,12 +318,12 @@ type Kline struct {
 	Amount float64
 	Tr     float64
 
-	// MainNet float64
-	// Net     float64
+	MainNet float64
+	Net     float64
 
 	Pe float64 `bson:"pe_ttm"`
-	// Pb float64
-	// Dv float64 `bson:"dv_ttm"`
+	Pb float64
+	Dv float64 `bson:"dv_ttm"`
 
 	//KDJ_K float64 `bson:"kdj_k"`
 	//KDJ_D float64 `bson:"kdj_d"`
