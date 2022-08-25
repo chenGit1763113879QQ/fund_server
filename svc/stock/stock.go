@@ -390,19 +390,19 @@ func GetKline(c *gin.Context) {
 
 	// 分组聚合
 	group := bson.M{
-		"_id":      groupById,
-		"time":     bson.M{"$last": "$_id.time"},
-		"open":     bson.M{"$first": "$open"},
-		"close":    bson.M{"$last": "$close"},
-		"high":     bson.M{"$max": "$high"},
-		"low":      bson.M{"$min": "$low"},
-		"ratio":    bson.M{"$last": "$ratio"},
-		"main_net": bson.M{"$sum": "$main_net"},
-		"vol":      bson.M{"$sum": "$vol"},
-		"amount":   bson.M{"$sum": "$amount"},
-		"pct_chg":  bson.M{"$sum": "$pct_chg"},
-		"tr":       bson.M{"$sum": "$tr"},
-		// "lrye":        bson.M{"$last": "$rzrqye"},
+		"_id":         groupById,
+		"time":        bson.M{"$last": "$time"},
+		"open":        bson.M{"$first": "$open"},
+		"close":       bson.M{"$last": "$close"},
+		"high":        bson.M{"$max": "$high"},
+		"low":         bson.M{"$min": "$low"},
+		"ratio":       bson.M{"$last": "$ratio"},
+		"main_net":    bson.M{"$sum": "$main_net"},
+		"vol":         bson.M{"$sum": "$vol"},
+		"amount":      bson.M{"$sum": "$amount"},
+		"pct_chg":     bson.M{"$sum": "$pct_chg"},
+		"tr":          bson.M{"$sum": "$tr"},
+		"rzrqye":      bson.M{"$last": "$rzrqye"},
 		"winner_rate": bson.M{"$last": "$winner_rate"},
 	}
 

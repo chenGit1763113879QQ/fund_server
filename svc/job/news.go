@@ -23,7 +23,7 @@ func getNews() {
 	}
 
 	// 等待初始化
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 5)
 	db.Stock.Find(ctx, bson.M{}).All(&stocks)
 
 	// 去除多余后缀
@@ -37,12 +37,10 @@ func getNews() {
 
 	// 下载函数
 	getData := func() {
-		params := bson.M{"src": "eastmoney"}
-
-		if err := util.TushareApi("news", params, "datetime,title,content", &news); err != nil {
+		err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news)
+		if err != nil {
 			return
 		}
-
 		for _, n := range news {
 			// 去除【行情】类资讯
 			if strings.Contains(n.Content, "【行情】") {
