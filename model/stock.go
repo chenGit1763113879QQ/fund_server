@@ -185,6 +185,7 @@ func (s *Stock) CalData(m *Market) {
 		s.MarketType = m.Name
 		s.Type = m.Type
 
+		// add pinyin
 		if util.IsChinese(s.Name) {
 			for _, c := range pinyin.LazyPinyin(s.Name, pinyinArg) {
 				s.Pinyin += c
@@ -295,10 +296,9 @@ type Range struct {
 }
 
 type KlineOpt struct {
-	Code      string `form:"code"`
-	Period    string `form:"period"`
+	Code      string `form:"code" binding:"required"`
+	Period    string `form:"period" binding:"required"`
 	StartDate string `form:"start_date"`
-	Select    string `form:"select"`
 	Head      int    `form:"head"`
 	Tail      int    `form:"tail"`
 }
@@ -323,11 +323,11 @@ type Kline struct {
 
 	Pe float64 `bson:"pe_ttm"`
 	Pb float64
-	Dv float64 `bson:"dv_ttm"`
+	// Dv float64 `bson:"dv_ttm"`
 
 	//KDJ_K float64 `bson:"kdj_k"`
 	//KDJ_D float64 `bson:"kdj_d"`
-	KDJ_J float64 `bson:"kdj_j"`
+	// KDJ_J float64 `bson:"kdj_j"`
 
 	WinnerRate float64 `bson:"winner_rate"`
 

@@ -71,8 +71,7 @@ func (s *Trade) Sell(k Kline, id string) {
 		// 收益
 		Profit: (k.Close*vol/amount - 1) * 100,
 	})
-
-	// fmt.Println(id, s.holds[0].Time.Format("2006-01-02"), k.Id.Time.Format("2006-01-02"), fmt.Sprintf("%.2f", (k.Close*vol/amount-1)*100))
+	
 	s.Init()
 }
 

@@ -3,6 +3,7 @@ package stock
 import (
 	"context"
 	"errors"
+	"fmt"
 	"fund/cache"
 	"fund/db"
 	"fund/midware"
@@ -349,7 +350,7 @@ func GetKline(c *gin.Context) {
 	}
 
 	// 数据是否需要更新
-	job.GetKline(items)
+	go job.GetKline(items)
 
 	// 分钟行情
 	if strings.Contains(req.Period, "min") {
@@ -361,9 +362,9 @@ func GetKline(c *gin.Context) {
 		}
 
 		groupById = bson.M{"$subtract": bson.A{
-			bson.M{"$subtract": bson.A{"$_id.time", time.Time{}}},
+			bson.M{"$subtract": bson.A{"$time", time.Time{}}},
 			bson.M{"$mod": bson.A{
-				bson.M{"$subtract": bson.A{"$_id.time", time.Time{}}},
+				bson.M{"$subtract": bson.A{"$time", time.Time{}}},
 				duration * 1000 * 60,
 			}},
 		}}
@@ -372,7 +373,7 @@ func GetKline(c *gin.Context) {
 			"d": "%Y-%m-%d", "w": "%Y-%V", "m": "%Y-%m", "y": "%Y",
 		}[req.Period]
 
-		groupById = bson.M{"$dateToString": bson.M{"format": format, "date": "$_id.time"}}
+		groupById = bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}}
 	}
 
 	if req.StartDate == "" {
@@ -380,12 +381,11 @@ func GetKline(c *gin.Context) {
 		case "y", "q", "m":
 			req.StartDate = "2000-01-01"
 		case "w":
-			req.StartDate = "2016-01-01"
+			req.StartDate = "2016-06-01"
 		default:
-			req.StartDate = "2019-01-01"
+			req.StartDate = "2019-06-01"
 		}
 	}
-
 	t, _ := time.Parse("2006-01-02", req.StartDate)
 
 	// 分组聚合
@@ -398,45 +398,22 @@ func GetKline(c *gin.Context) {
 		"low":      bson.M{"$min": "$low"},
 		"ratio":    bson.M{"$last": "$ratio"},
 		"main_net": bson.M{"$sum": "$main_net"},
-	}
-	if items["marketType"] == "CN" && items["type"] == "stock" && req.Period == "d" {
-		group["lrye"] = bson.M{"$last": "$rzrqye"}
-		group["winner_rate"] = bson.M{"$last": "$winner_rate"}
-	}
-
-	// 选择数据项
-	selects := bson.M{"_id": 0}
-	for _, col := range strings.Split(req.Select, ",") {
-		switch col {
-		case "kline":
-			group["vol"] = bson.M{"$sum": "$vol"}
-			group["amount"] = bson.M{"$sum": "$amount"}
-			group["pct_chg"] = bson.M{"$sum": "$pct_chg"}
-			group["tr"] = bson.M{"$sum": "$tr"}
-
-		case "time":
-			selects[col] = 1
-
-		default:
-			group[col] = bson.M{"$last": "$" + col}
-			selects[col] = 1
-		}
+		"vol":      bson.M{"$sum": "$vol"},
+		"amount":   bson.M{"$sum": "$amount"},
+		"pct_chg":  bson.M{"$sum": "$pct_chg"},
+		"tr":       bson.M{"$sum": "$tr"},
+		// "lrye":        bson.M{"$last": "$rzrqye"},
+		"winner_rate": bson.M{"$last": "$winner_rate"},
 	}
 
+	// query
 	var data []bson.M
 
-	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"_id.code": req.Code, "_id.time": bson.M{"$gt": t}}).
-		Group(group).
-		Project(selects).
-		Sort(bson.M{"_id.time": 1}).
-		Do()).All(&data)
+	fmt.Println(req.Code, util.Md5Code(req.Code))
 
-	// 范围
-	if req.Head > len(data) || req.Tail > len(data) {
-		midware.Success(c, data)
-		return
-	}
+	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
+		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
+		Group(group).Sort(bson.M{"time": 1}).Do()).All(&data)
 
 	if req.Head > 0 {
 		midware.Success(c, data[:req.Head])
@@ -446,11 +423,6 @@ func GetKline(c *gin.Context) {
 		midware.Success(c, data[len(data)-req.Tail:])
 		return
 	}
-
-	if req.Period != "w" && len(data) > 300 {
-		data = data[len(data)-300:]
-	}
-
 	midware.Success(c, data)
 }
 

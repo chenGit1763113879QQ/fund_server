@@ -17,18 +17,18 @@ func test1(arg float64) {
 
 		for i := range k {
 			if k[i].WinnerRate < 2.7 && k[i].Tr < 3.5 && k[i].Pe < 33 {
-				// log
 				_id := bson.M{"code": id, "time": k[i].Time}
+
 				db.Backtest.UpsertId(ctx,
-					_id, bson.M{"type": "b", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
+					_id, bson.M{"type": "buy", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
 
 				trade.Buy(k[i])
 
 			} else if k[i].WinnerRate > arg {
-				// log
 				_id := bson.M{"code": id, "time": k[i].Time}
+
 				db.Backtest.UpsertId(ctx,
-					_id, bson.M{"type": "s", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
+					_id, bson.M{"type": "sell", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
 
 				trade.Sell(k[i], id)
 			}

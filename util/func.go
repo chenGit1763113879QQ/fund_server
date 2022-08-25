@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -111,12 +112,9 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 }
 
 func Md5Code(code string) string {
-	sig := md5.Sum([]byte(code))
-	sum := byte(0)
-	for _, c := range sig {
-		sum += c
-	}
-	return fmt.Sprintf("%d", sum%128)
+	val := md5.Sum([]byte(code))
+	n, _ := strconv.ParseUint(fmt.Sprintf("%x", val), 16, 32)
+	return fmt.Sprintf("%d", n%128)
 }
 
 func IsChinese(str string) bool {

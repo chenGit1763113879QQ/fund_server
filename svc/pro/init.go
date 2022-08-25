@@ -76,7 +76,7 @@ func Init() {
 	initKline()
 	for {
 		log.Info().Msg("start jobs...")
-		Test1()
+		// Test1()
 		time.Sleep(time.Hour)
 	}
 }
