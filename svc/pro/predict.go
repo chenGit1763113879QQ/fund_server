@@ -1,9 +1,11 @@
 package pro
 
 import (
+	"fund/cache"
 	"fund/db"
 	"fund/model"
 	"fund/util/pool"
+	"math"
 	"time"
 
 	"github.com/go-gota/gota/dataframe"
@@ -31,14 +33,17 @@ func PredictStock() {
 	db.Predict.DropCollection(ctx)
 
 	p := pool.NewPool(5)
-	for i := range items {
-		p.NewTask(func() {
-			predict(items[i].Id, 30)
-		})
-		p.NewTask(func() {
-			predict(items[i].Id, 60)
-		})
-	}
+	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
+		// filter
+		if v.Mc > 50*math.Pow(10, 8) {
+			p.NewTask(func() {
+				predict(k, 30)
+			})
+			p.NewTask(func() {
+				predict(k, 60)
+			})
+		}
+	})
 	p.Wait()
 }
 

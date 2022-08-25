@@ -21,7 +21,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	pro.Test()
+	go pro.Init()
 
 	r.Use(midware.FlowController)
 

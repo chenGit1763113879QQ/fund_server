@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// 策略1：低买高卖
 func test1(arg float64) {
 	trade := model.NewTrade(fmt.Sprintf("test arg:%.2f", arg))
 
@@ -19,8 +20,7 @@ func test1(arg float64) {
 				// log
 				_id := bson.M{"code": id, "time": k[i].Time}
 				db.Backtest.UpsertId(ctx,
-					_id,
-					bson.M{"type": "b", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
+					_id, bson.M{"type": "b", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
 
 				trade.Buy(k[i])
 
@@ -28,8 +28,7 @@ func test1(arg float64) {
 				// log
 				_id := bson.M{"code": id, "time": k[i].Time}
 				db.Backtest.UpsertId(ctx,
-					_id,
-					bson.M{"type": "s", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
+					_id, bson.M{"type": "s", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
 
 				trade.Sell(k[i], id)
 			}
@@ -38,10 +37,10 @@ func test1(arg float64) {
 	trade.RecordsInfo()
 }
 
-func Test() {
-	go test1(70)
-	go test1(80)
-	go test1(75)
-	go test1(85)
-	go test1(90)
+func Test1() {
+	go test1(20)
+	go test1(30)
+	go test1(40)
+	go test1(50)
+	go test1(60)
 }

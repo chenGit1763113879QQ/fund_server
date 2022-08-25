@@ -74,7 +74,7 @@ func getRealStock(m *model.Market) {
 	for {
 		freq := m.Freq()
 		if freq == 2 && m.Type == "stock" {
-			log.Info().Str("market", m.Name).Int("freq", freq).Msg("updating stock")
+			log.Info().Msgf("updating stock[%s][%d]", m.Name, freq)
 		}
 
 		newUrl := url + strings.Join(stk.GetJsonFields(freq), ",")
@@ -146,7 +146,7 @@ func updateMinute(s []model.Stock, m *model.Market) {
 
 	if m.FreqIsZero() {
 		db.MinuteDB.CreateCollection(ctx, date)
-		db.MinuteDB.Collection(date).EnsureIndexes(ctx, []string{"_id.code,_id.time"}, nil)
+		_ = db.MinuteDB.Collection(date).EnsureIndexes(ctx, []string{"_id.code,_id.time"}, nil)
 	}
 
 	a := time.Now()
@@ -156,12 +156,14 @@ func updateMinute(s []model.Stock, m *model.Market) {
 
 	bulk := db.MinuteDB.Collection(date).Bulk()
 	for _, i := range s {
-		bulk.UpsertId(
-			bson.M{"code": i.Id, "time": newTime.Unix()},
-			bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg,
-				"net": i.Net, "huge": i.MainHuge, "big": i.MainBig, "mid": i.MainMid,
-				"small": i.MainSmall, "minutes": newTime.Minute()},
-		)
+		if i.Price > 0 {
+			bulk.UpsertId(
+				bson.M{"code": i.Id, "time": newTime.Unix()},
+				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg,
+					"net": i.Net, "huge": i.MainHuge, "big": i.MainBig, "mid": i.MainMid,
+					"small": i.MainSmall, "minutes": newTime.Minute()},
+			)
+		}
 	}
 	go bulk.Run(ctx)
 }
