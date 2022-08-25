@@ -58,7 +58,11 @@ func initKline() {
 		// filter
 		if v.Mc > 50*math.Pow(10, 8) {
 			p.NewTask(func() {
-				klineMap.Store(k, getKline(k))
+				var data []model.Kline
+				// get kline
+				db.KlineDB.Collection(util.Md5Code(k)).Aggregate(ctx, mongox.Pipeline().
+					Match(bson.M{"code": k}).Sort(bson.M{"time": 1}).Do()).All(&data)
+				klineMap.Store(k, data)
 			})
 		}
 	})
@@ -66,15 +70,8 @@ func initKline() {
 	log.Info().Msgf("init kline success, length: %d", klineMap.Length())
 }
 
-func getKline(code string) []model.Kline {
-	var data []model.Kline
-	db.KlineDB.Collection(util.CodeToInt(code)).Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"code": code}).Sort(bson.M{"time": 1}).Do()).All(&data)
-	return data
-}
-
 func Init() {
-	// 等待缓存初始化
+	// wait for cache init
 	time.Sleep(time.Second * 5)
 	initKline()
 	for {

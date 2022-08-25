@@ -37,7 +37,7 @@ var (
 
 func init() {
 	getMarketStatus()
-	log.Info().Msg("init market status")
+	log.Info().Msg("init market status success.")
 
 	for _, p := range Markets {
 		go getRealStock(p)
@@ -196,7 +196,7 @@ func GetKline(items bson.M) {
 		df := dataframe.ReadCSV(strings.NewReader("time,open,close,high,low,vol,amount,pct_chg,tr\n" + strings.Join(data.Data.Klines, "\n"))).
 			Arrange(dataframe.Order{Colname: "time", Reverse: true})
 
-		coll := db.KlineDB.Collection(util.CodeToInt(code))
+		coll := db.KlineDB.Collection(util.Md5Code(code))
 
 		// ensure index
 		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)

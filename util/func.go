@@ -110,7 +110,7 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 	return gocsv.Unmarshal(strings.NewReader(src.String()), val)
 }
 
-func CodeToInt(code string) string {
+func Md5Code(code string) string {
 	sig := md5.Sum([]byte(code))
 	sum := byte(0)
 	for _, c := range sig {

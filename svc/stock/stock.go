@@ -213,7 +213,7 @@ func AddChart(chart string, items []bson.M) {
 				Close float64 `bson:"close"`
 			}
 
-			db.KlineDB.Collection(util.CodeToInt(code)).Find(ctx, bson.M{"_id.code": code}).
+			db.KlineDB.Collection(util.Md5Code(code)).Find(ctx, bson.M{"_id.code": code}).
 				Sort("-_id.time").Select(bson.M{"close": 1}).Limit(60).All(&data)
 
 			price := make([]float64, len(data))
@@ -425,7 +425,7 @@ func GetKline(c *gin.Context) {
 
 	var data []bson.M
 
-	db.KlineDB.Collection(util.CodeToInt(req.Code)).Aggregate(ctx, mongox.Pipeline().
+	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"_id.code": req.Code, "_id.time": bson.M{"$gt": t}}).
 		Group(group).
 		Project(selects).
