@@ -3,11 +3,10 @@ package util
 import (
 	"bytes"
 	"crypto/md5"
+	"encoding/hex"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -112,9 +111,9 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 }
 
 func Md5Code(code string) string {
-	val := md5.Sum([]byte(code))
-	n, _ := strconv.ParseUint(fmt.Sprintf("%x", val), 16, 32)
-	return fmt.Sprintf("%d", n%128)
+	m := md5.New()
+	m.Write([]byte(code))
+	return hex.EncodeToString(m.Sum(nil))[0:2]
 }
 
 func IsChinese(str string) bool {

@@ -133,7 +133,7 @@ func ConnectItems(c *gin.Context) {
 	defer ws.Conn.Close()
 
 	code := c.Query("code")
-	items := GetStock(code)
+	items := GetStockDetail(code)
 	if items == nil {
 		midware.Error(c, errors.New("代码不存在"))
 		return

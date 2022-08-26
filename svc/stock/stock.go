@@ -3,7 +3,6 @@ package stock
 import (
 	"context"
 	"errors"
-	"fmt"
 	"fund/cache"
 	"fund/db"
 	"fund/midware"
@@ -40,19 +39,16 @@ var (
 	}
 )
 
-// get stock detail
-func GetStock(code string) bson.M {
+func GetStockDetail(code string) bson.M {
 	var data bson.M
 	db.Stock.Find(ctx, bson.M{"_id": code}).Select(bson.M{"members": 0, "company": 0}).One(&data)
-	// 添加详情
+
 	if data != nil {
-		// 板块
 		var bk []bson.M
 		db.Stock.Find(ctx, bson.M{"_id": bson.M{"$in": data["bk"]}}).
 			Select(bson.M{"name": 1, "type": 1, "pct_chg": 1}).All(&bk)
 		data["bk"] = bk
 
-		// 市场状态
 		for _, i := range job.Markets {
 			if i.Name == data["marketType"] {
 				data["status"] = i.Status
@@ -84,7 +80,6 @@ func getStockList(codeStr string, chart string) []bson.M {
 	return data
 }
 
-// get stock list
 func GetStockList(c *gin.Context) {
 	req := new(model.CListOpt)
 	c.ShouldBind(req)
@@ -134,7 +129,6 @@ func GetStockList(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// get active list
 func GetActiveList(c *gin.Context) {
 	req := new(model.Group)
 	chart := c.Query("chart")
@@ -173,7 +167,6 @@ func GetActiveList(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// get minute kline
 func GetMinute(code string) any {
 	var data []struct {
 		Price float64 `json:"price"`
@@ -198,7 +191,6 @@ func GetMinute(code string) any {
 	return data
 }
 
-// add simple chart data
 func AddChart(chart string, items []bson.M) {
 	var f func(item bson.M, arg string)
 
@@ -267,7 +259,6 @@ func AddChart(chart string, items []bson.M) {
 	}
 }
 
-// search data
 func Search(c *gin.Context) {
 	input := c.Query("input") + ".*"
 	data := make([]bson.M, 0)
@@ -291,7 +282,6 @@ func Search(c *gin.Context) {
 	midware.Success(c, bson.M{"stock": data, "arts": arts})
 }
 
-// get ticks details
 func GetRealTicks(item bson.M) bson.M {
 	cid, _ := item["cid"].(string)
 
@@ -336,7 +326,6 @@ func GetRealTicks(item bson.M) bson.M {
 	return bson.M{"ticks": ticks, "pankou": pankou}
 }
 
-// get kline data
 func GetKline(c *gin.Context) {
 	req := new(model.KlineOpt)
 	c.ShouldBind(req)
@@ -388,7 +377,7 @@ func GetKline(c *gin.Context) {
 	}
 	t, _ := time.Parse("2006-01-02", req.StartDate)
 
-	// 分组聚合
+	// groupBy
 	group := bson.M{
 		"_id":         groupById,
 		"time":        bson.M{"$last": "$time"},
@@ -408,9 +397,6 @@ func GetKline(c *gin.Context) {
 
 	// query
 	var data []bson.M
-
-	fmt.Println(req.Code, util.Md5Code(req.Code))
-
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
 		Group(group).Sort(bson.M{"time": 1}).Do()).All(&data)
@@ -426,9 +412,8 @@ func GetKline(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// data center
-// includes topList, blockTrade, events
 func DataCenter(c *gin.Context) {
+	// includes topList, blockTrade, events
 	var req struct {
 		Code      string `form:"code"`
 		TradeDate string `form:"trade_date"`
@@ -437,7 +422,7 @@ func DataCenter(c *gin.Context) {
 	}
 	c.ShouldBind(&req)
 
-	// 解析参数
+	// query
 	filter := bson.M{}
 	if req.Code != "" {
 		filter["ts_code"] = req.Code
@@ -493,7 +478,6 @@ func DataCenter(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// get all stock
 func GetAllStock(c *gin.Context) {
 	data := make([]bson.M, 0)
 	params := make(map[string]string)
@@ -504,7 +488,6 @@ func GetAllStock(c *gin.Context) {
 	midware.Auto(c, err, data)
 }
 
-// get market bk details
 func DetailBK(c *gin.Context) {
 	var data []bson.M
 	db.Stock.Find(ctx, bson.M{"type": c.Query("type")}).Select(bson.M{
@@ -513,7 +496,6 @@ func DetailBK(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// get predict klines data
 func PredictKline(c *gin.Context) {
 	data := make([]bson.M, 0)
 	db.Predict.Aggregate(ctx, mongox.Pipeline().
@@ -537,7 +519,6 @@ func getGroups(id pr.ObjectID) *model.Groups {
 	return g
 }
 
-// get groups data
 func GetGroups(c *gin.Context) {
 	uid := c.MustGet("id").(pr.ObjectID)
 	chart := c.Query("chart")
@@ -552,7 +533,6 @@ func GetGroups(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// add group
 func AddGroup(c *gin.Context) {
 	req := new(model.Group)
 	c.ShouldBind(req)
@@ -584,7 +564,6 @@ func AddGroup(c *gin.Context) {
 	midware.Auto(c, err, "新建分组成功")
 }
 
-// remove group
 func RemGroup(c *gin.Context) {
 	var req struct {
 		Name string `json:"name" binding:"required"`
@@ -611,7 +590,6 @@ func RemGroup(c *gin.Context) {
 	midware.Auto(c, err, "已删除分组")
 }
 
-// change stock groups
 func ChangeGroup(c *gin.Context) {
 	var req struct {
 		Code    string   `json:"code" binding:"required"`
@@ -644,7 +622,6 @@ func ChangeGroup(c *gin.Context) {
 	midware.Auto(c, err, "修改分组成功")
 }
 
-// stock in groups
 func InGroup(c *gin.Context) {
 	code := c.Query("code")
 	if cache.Stock.Exist(code) {
@@ -690,7 +667,6 @@ func InGroup(c *gin.Context) {
 	midware.Success(c, bson.M{"allGroup": allGroup, "inGroup": inGroup})
 }
 
-// update active list
 func PutActiveList(c *gin.Context) {
 	req := new(model.Group)
 	c.ShouldBind(req)
@@ -701,6 +677,5 @@ func PutActiveList(c *gin.Context) {
 	err := db.User.UpdateOne(ctx, bson.M{"_id": uid, "groups.name": req.Name}, bson.M{
 		"$set": bson.M{"groups.$": req},
 	})
-
 	midware.Auto(c, err, nil)
 }
