@@ -1,9 +1,3 @@
-/*
-Name: mongox
-Auth: lucario
-Date: 2022/08/12
-Desc: 基于 mongo 的 pipeline 链式调用封装
-*/
 package mongox
 
 import "go.mongodb.org/mongo-driver/bson"

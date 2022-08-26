@@ -10,7 +10,6 @@ import (
 	"fund/svc/job"
 	"fund/util"
 	"fund/util/mongox"
-	"fund/util/pool"
 	"net/http"
 	"strconv"
 	"strings"
@@ -292,7 +291,7 @@ func GetRealTicks(item bson.M) bson.M {
 		Vol   int     `csv:"vol" json:"vol"`
 		Type  int     `csv:"type" json:"type"`
 	}
-	p := pool.NewPool(2)
+	p := util.NewPool(2)
 
 	// pankou
 	p.NewTask(func() {

@@ -7,7 +7,6 @@ import (
 	"fund/model"
 	"fund/util"
 	"fund/util/mongox"
-	"fund/util/pool"
 	"math"
 	"sync"
 	"time"
@@ -20,6 +19,11 @@ type KlineMap struct {
 	data map[string][]model.Kline
 	sync.RWMutex
 }
+
+var (
+	ctx      = context.Background()
+	klineMap = &KlineMap{data: make(map[string][]model.Kline)}
+)
 
 func (s *KlineMap) Length() int {
 	s.RLock()
@@ -47,13 +51,8 @@ func (s *KlineMap) Range(f func(k string, v []model.Kline)) {
 	}
 }
 
-var (
-	ctx      = context.Background()
-	klineMap = &KlineMap{data: make(map[string][]model.Kline)}
-)
-
 func initKline() {
-	p := pool.NewPool(5)
+	p := util.NewPool(5)
 	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
 		// filter
 		if v.Mc > 50*math.Pow(10, 8) {
