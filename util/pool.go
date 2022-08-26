@@ -1,13 +1,14 @@
 package util
 
 import (
-	"sync"
+	"sync/atomic"
+	"time"
 )
 
 type Pool struct {
-	work chan func()   // work
-	sem  chan struct{} // limit goroutine
-	wg   sync.WaitGroup
+	work  chan func()   // work
+	sem   chan struct{} // limit goroutine
+	state int32
 }
 
 // Return New Pool
@@ -20,7 +21,7 @@ func NewPool(size int) *Pool {
 
 // Add Task To Pool
 func (p *Pool) NewTask(task func()) {
-	p.wg.Add(1)
+	atomic.AddInt32(&p.state, 1)
 
 	select {
 	case p.work <- task:
@@ -36,7 +37,7 @@ func (p *Pool) worker(task func()) {
 	var ok = true
 	for ok {
 		task()
-		p.wg.Done()
+		atomic.AddInt32(&p.state, -1)
 
 		task, ok = <-p.work
 	}
@@ -44,5 +45,11 @@ func (p *Pool) worker(task func()) {
 
 // Wait For Task End
 func (p *Pool) Wait() {
-	p.wg.Wait()
+	for {
+		state := atomic.LoadInt32(&p.state)
+		if state == 0 {
+			return
+		}
+		time.Sleep(time.Microsecond)
+	}
 }

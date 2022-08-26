@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"fund/db"
 	"fund/model"
+	"fund/util"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -38,9 +39,11 @@ func test1(arg float64) {
 }
 
 func Test1() {
-	go test1(20)
-	go test1(30)
-	go test1(40)
-	go test1(50)
-	go test1(60)
+	p := util.NewPool(5)
+	p.NewTask(func() { test1(20) })
+	p.NewTask(func() { test1(30) })
+	p.NewTask(func() { test1(40) })
+	p.NewTask(func() { test1(50) })
+	p.NewTask(func() { test1(60) })
+	p.Wait()
 }

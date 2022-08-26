@@ -260,15 +260,6 @@ func (s *Stock) formatId(m *Market) {
 	}
 }
 
-type CListOpt struct {
-	Parent     string   `form:"parent"`
-	MarketType string   `form:"marketType" binding:"oneof=CN HK US,omitempty"`
-	Sort       string   `form:"sort"`
-	Chart      string   `form:"chart"`
-	Page       int64    `form:"page" binding:"min=1,omitempty"`
-	List       []string `form:"list" json:"list" bson:"list" binding:"unique,omitempty"`
-}
-
 type Groups struct {
 	Groups []Group  `json:"groups"`
 	Stocks []bson.M `json:"stocks"`
@@ -295,14 +286,6 @@ type Range struct {
 	Unit  float64 `json:"unit"`
 }
 
-type KlineOpt struct {
-	Code      string `form:"code" binding:"required"`
-	Period    string `form:"period" binding:"required"`
-	StartDate string `form:"start_date"`
-	Head      int    `form:"head"`
-	Tail      int    `form:"tail"`
-}
-
 type KlineParams struct {
 	Period string
 	Format string
@@ -313,7 +296,6 @@ type Kline struct {
 	Time time.Time `bson:"time"`
 
 	Close float64 `bson:"close_qfq"`
-
 	PctChg float64 `bson:"pct_chg"`
 	Amount float64
 	Tr     float64
@@ -343,5 +325,5 @@ type Kline struct {
 	//BOLL_UP float64 `bson:"boll_upper"`
 	//BOLL_LOW float64 `bson:"boll_lower"`
 
-	CCI float64
+	// CCI float64
 }

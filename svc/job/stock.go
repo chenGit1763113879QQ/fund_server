@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/go-gota/gota/dataframe"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
@@ -83,13 +82,8 @@ func getRealStock(m *model.Market) {
 			continue
 		}
 
-		var resp struct {
-			Data struct {
-				Diff []model.Stock `json:"diff"`
-			} `json:"data"`
-		}
-		sonic.Unmarshal(body, &resp)
-		data := resp.Data.Diff
+		var data []model.Stock
+		util.UnmarshalJSON(body, &data, "data", "diff")
 
 		bulk := db.Stock.Bulk()
 		for i := range data {
@@ -185,15 +179,11 @@ func GetKline(items bson.M) {
 		url := fmt.Sprintf("http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=%s&fields1=f1&fields2=f51,f52,f53,f54,f55,f56,f57,f59,f61&klt=%d&end=20500101&lmt=5000&fqt=1", cid, p.Params)
 		body, _ := util.GetAndRead(url)
 
-		var data struct {
-			Data struct {
-				Klines []string `json:"klines"`
-			} `json:"data"`
-		}
-		sonic.Unmarshal(body, data)
+		var data []string
+		util.UnmarshalJSON(body, &data, "data", "klines")
 
 		// read csv
-		df := dataframe.ReadCSV(strings.NewReader("time,open,close,high,low,vol,amount,pct_chg,tr\n" + strings.Join(data.Data.Klines, "\n"))).
+		df := dataframe.ReadCSV(strings.NewReader("time,open,close,high,low,vol,amount,pct_chg,tr\n" + strings.Join(data, "\n"))).
 			Arrange(dataframe.Order{Colname: "time", Reverse: true})
 
 		coll := db.KlineDB.Collection(util.Md5Code(code))
@@ -225,15 +215,11 @@ func getAHCompare() {
 	url := "https://xueqiu.com/service/v5/stock/ah/compare?page=1&order=desc&order_by=premium&size=2000"
 	body, _ := util.GetAndRead(url)
 
-	var data struct {
-		Data struct {
-			Items []model.AHCompare `json:"items"`
-		} `json:"data"`
-	}
-	sonic.Unmarshal(body, data)
+	var data []model.AHCompare
+	util.UnmarshalJSON(body, &data, "data", "items")
 
 	bulk := db.Stock.Bulk()
-	for _, i := range data.Data.Items {
+	for _, i := range data {
 		i.ParseId()
 		bulk.UpdateId(i.CNCode, bson.M{"$set": bson.M{"AH": i}})
 		bulk.UpdateId(i.HKCode, bson.M{"$set": bson.M{"AH": i}})

@@ -52,6 +52,7 @@ func (s *KlineMap) Range(f func(k string, v []model.Kline)) {
 }
 
 func initKline() {
+	log.Info().Msg("kline start init")
 	p := util.NewPool(5)
 	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
 		// filter
@@ -70,7 +71,7 @@ func initKline() {
 }
 
 func Init() {
-	// wait for cache init
+	// wait for init
 	time.Sleep(time.Second * 5)
 	initKline()
 	for {

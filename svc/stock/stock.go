@@ -80,7 +80,14 @@ func getStockList(codeStr string, chart string) []bson.M {
 }
 
 func GetStockList(c *gin.Context) {
-	req := new(model.CListOpt)
+	var req struct {
+		Parent     string   `form:"parent"`
+		MarketType string   `form:"marketType" binding:"oneof=CN HK US,omitempty"`
+		Sort       string   `form:"sort"`
+		Chart      string   `form:"chart"`
+		Page       int64    `form:"page" binding:"min=1,omitempty"`
+		List       []string `form:"list" json:"list" bson:"list" binding:"unique,omitempty"`
+	}
 	c.ShouldBind(req)
 
 	var query qmgo.QueryI
@@ -326,7 +333,13 @@ func GetRealTicks(item bson.M) bson.M {
 }
 
 func GetKline(c *gin.Context) {
-	req := new(model.KlineOpt)
+	var req struct {
+		Code      string `form:"code" binding:"required"`
+		Period    string `form:"period" binding:"required"`
+		StartDate string `form:"start_date"`
+		Head      int    `form:"head"`
+		Tail      int    `form:"tail"`
+	}
 	c.ShouldBind(req)
 
 	var items, groupById bson.M

@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// 获取新闻资讯
 func getNews() {
 	var stocks []struct {
 		Code string `bson:"_id"`
@@ -22,7 +21,7 @@ func getNews() {
 		Title    string `csv:"title"`
 	}
 
-	// 等待初始化
+	// wait
 	time.Sleep(time.Second * 5)
 	db.Stock.Find(ctx, bson.M{}).All(&stocks)
 
@@ -32,11 +31,9 @@ func getNews() {
 			stocks[i].Name = strings.Split(stocks[i].Name, tail)[0]
 		}
 	}
-	// 时区
 	location, _ := time.LoadLocation("Asia/Shanghai")
 
-	// 下载函数
-	getData := func() {
+	for {
 		err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news)
 		if err != nil {
 			return
@@ -50,11 +47,10 @@ func getNews() {
 			codes := make([]string, 0)
 			for _, s := range stocks {
 				if strings.Contains(n.Title, s.Name) && s.Name != "证券" {
-					codes = append(codes, s.Code)
+					if len(codes) < 3 {
+						codes = append(codes, s.Code)
+					}
 				}
-			}
-			if len(codes) > 3 {
-				codes = codes[0:3]
 			}
 			t, _ := time.ParseInLocation("2006-01-02 15:04:05", n.Datetime, location)
 			db.Article.InsertOne(ctx, &model.Article{
@@ -64,10 +60,6 @@ func getNews() {
 				Tag:      codes,
 			})
 		}
-
-	}
-	for {
-		getData()
 		time.Sleep(time.Minute)
 	}
 }

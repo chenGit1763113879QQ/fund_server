@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -89,7 +88,6 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 	}
 	if data.Msg != "" {
 		log.Warn().Msg(err.Error())
-		return errors.New(data.Msg)
 	}
 
 	// read csv data
@@ -127,4 +125,16 @@ func IsChinese(str string) bool {
 		}
 	}
 	return false
+}
+
+func UnmarshalJSON(body []byte, data any, path ...any) error {
+	node, err := sonic.Get(body, path)
+	if err != nil {
+		return err
+	}
+	raw, err := node.Raw()
+	if err != nil {
+		return err
+	}
+	return sonic.UnmarshalString(raw, &data)
 }

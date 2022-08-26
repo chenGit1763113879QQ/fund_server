@@ -126,39 +126,28 @@ func getDistribution(market string) {
 	cache.Numbers.Store(market, bson.M{"label": label, "value": nums})
 }
 
-// get north money
 func getNorthMoney() {
 	url := "http://push2.eastmoney.com/api/qt/kamt.rtmin/get?fields1=f1,f3&fields2=f51,f52,f54"
 	body, _ := util.GetAndRead(url)
 
-	var data struct {
-		Data struct {
-			S2n []string `json:"s2n"`
-		} `json:"data"`
-	}
-	sonic.Unmarshal(body, &data)
+	var data []string
+	util.UnmarshalJSON(body, &data, "data", "s2n")
 
-	df := dataframe.ReadCSV(strings.NewReader("time,hgt,sgt\n" + strings.Join(data.Data.S2n, "\n")))
+	df := dataframe.ReadCSV(strings.NewReader("time,hgt,sgt\n" + strings.Join(data, "\n")))
 	cache.NorthMoney = df.Maps()
 }
 
-// get main flow
 func getMainFlow() {
 	url := "http://push2.eastmoney.com/api/qt/stock/fflow/kline/get?lmt=0&klt=1&fields1=f1&fields2=f51,f52&secid=1.000001&secid2=0.399001"
 	body, _ := util.GetAndRead(url)
 
-	var data struct {
-		Data struct {
-			Klines []string `json:"klines"`
-		} `json:"data"`
-	}
-	sonic.Unmarshal(body, &data)
+	var data []string
+	util.UnmarshalJSON(body, &data, "data", "klines")
 
-	df := dataframe.ReadCSV(strings.NewReader("time,value\n" + strings.Join(data.Data.Klines, "\n")))
+	df := dataframe.ReadCSV(strings.NewReader("time,value\n" + strings.Join(data, "\n")))
 	cache.MainFlow = df.Maps()
 }
 
-// get market status
 func getMarketStatus() {
 	body, _ := util.GetAndRead("https://xueqiu.com/service/v5/stock/batch/quote?symbol=SH000001,HKHSI,.IXIC")
 
@@ -189,13 +178,9 @@ func getMarketStatus() {
 	}
 }
 
-// get market info
 func getMarketInfo() {
 	url := StkHost + "/market_indicator/line?fields=rise_count,fall_count,yesterday_limit_up_avg_pcp,limit_up_count,limit_down_count,limit_up_broken_count,limit_up_broken_ratio,market_temperature"
 	body, _ := util.GetAndRead(url)
-	var data struct {
-		Data []bson.M `json:"data"`
-	}
-	sonic.Unmarshal(body, &data)
-	cache.MarketHot = data.Data
+
+	util.UnmarshalJSON(body, &cache.MarketHot, "data")
 }
