@@ -142,15 +142,8 @@ func ConnectItems(c *gin.Context) {
 	// 热度
 	go db.Stock.UpdateId(ctx, code, bson.M{"$inc": bson.M{"view": 1}})
 
-	// 成交明细 盘口数据
-	getTicks := func() {
-		if items["marketType"] == "CN" && items["type"] == "stock" {
-			ws.WriteJson(GetRealTicks(items))
-		}
-	}
 	ws.WriteJson(bson.M{"items": items})
 	go ws.WriteJson(bson.M{"minute": GetMinute(code)})
-	go getTicks()
 
 	// 最新资讯
 	go func() {
@@ -170,7 +163,6 @@ func ConnectItems(c *gin.Context) {
 			ws.WriteBson(bson.M{"items": i})
 			// update cache
 			items["vol"] = i.Vol
-			go getTicks()
 		}
 	}
 	job.Cond.L.Unlock()

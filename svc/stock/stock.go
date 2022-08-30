@@ -3,7 +3,6 @@ package stock
 import (
 	"context"
 	"errors"
-	"fund/cache"
 	"fund/db"
 	"fund/midware"
 	"fund/model"
@@ -11,13 +10,10 @@ import (
 	"fund/util"
 	"fund/util/mongox"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gocarina/gocsv"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/qiniu/qmgo"
 	"go.mongodb.org/mongo-driver/bson"
 	pr "go.mongodb.org/mongo-driver/bson/primitive"
@@ -29,7 +25,6 @@ const (
 )
 
 var (
-	json    = jsoniter.ConfigCompatibleWithStandardLibrary
 	ctx     = context.Background()
 	listOpt = bson.M{
 		"_id": 1, "cid": 1, "type": 1, "marketType": 1, "price": 1, "pct_chg": 1, "vol": 1, "amount": 1,
@@ -288,50 +283,6 @@ func Search(c *gin.Context) {
 	midware.Success(c, bson.M{"stock": data, "arts": arts})
 }
 
-func GetRealTicks(item bson.M) bson.M {
-	cid, _ := item["cid"].(string)
-
-	var pankou bson.M
-	var ticks []*struct {
-		Time  string  `csv:"time" json:"time"`
-		Price float64 `csv:"price" json:"price"`
-		Vol   int     `csv:"vol" json:"vol"`
-		Type  int     `csv:"type" json:"type"`
-	}
-	p := util.NewPool(2)
-
-	// pankou
-	p.NewTask(func() {
-		if item["marketType"] == "CN" {
-			body, _ := util.GetAndRead(EMHOST + "/get?fltt=2&fields=f530&secid=" + cid)
-			json.Get(body, "data").ToVal(&pankou)
-		}
-	})
-
-	// ticks
-	p.NewTask(func() {
-		body, _ := util.GetAndRead(EMHOST + "/details/get?fields1=f1&fields2=f51,f52,f53,f55&pos=-30&secid=" + cid)
-
-		var info []string
-		json.Get(body, "data", "details").ToVal(&info)
-
-		gocsv.Unmarshal(strings.NewReader("time,price,vol,type\n"+strings.Join(info, "\n")), &ticks)
-		for _, i := range ticks {
-			switch i.Type {
-			case 4:
-				i.Type = 0
-			case 1:
-				i.Type = -1
-			case 2:
-				i.Type = 1
-			}
-		}
-	})
-	p.Wait()
-
-	return bson.M{"ticks": ticks, "pankou": pankou}
-}
-
 func GetKline(c *gin.Context) {
 	var req struct {
 		Code      string `form:"code" binding:"required"`
@@ -340,78 +291,58 @@ func GetKline(c *gin.Context) {
 		Head      int    `form:"head"`
 		Tail      int    `form:"tail"`
 	}
-	c.ShouldBind(req)
+	if err := c.ShouldBind(&req); err != nil {
+		midware.Error(c, err)
+		return
+	}
 
-	var items, groupById bson.M
+	var items bson.M
 
 	db.Stock.Find(ctx, bson.M{"_id": req.Code}).One(&items)
 	if items == nil {
 		midware.Error(c, errors.New("code not found"))
 		return
 	}
-
-	// 数据是否需要更新
+	// update
 	go job.GetKline(items)
 
-	// 分钟行情
-	if strings.Contains(req.Period, "min") {
-		val := strings.Split(req.Period, "min")[0]
-		duration, err := strconv.Atoi(val)
-		if err != nil {
-			midware.Error(c, err)
-			return
-		}
-
-		groupById = bson.M{"$subtract": bson.A{
-			bson.M{"$subtract": bson.A{"$time", time.Time{}}},
-			bson.M{"$mod": bson.A{
-				bson.M{"$subtract": bson.A{"$time", time.Time{}}},
-				duration * 1000 * 60,
-			}},
-		}}
-	} else {
-		format := map[string]string{
-			"d": "%Y-%m-%d", "w": "%Y-%V", "m": "%Y-%m", "y": "%Y",
-		}[req.Period]
-
-		groupById = bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}}
-	}
+	format := map[string]string{
+		"d": "%Y/%m/%d", "w": "%Y/%V", "m": "%Y/%m", "y": "%Y",
+	}[req.Period]
 
 	if req.StartDate == "" {
 		switch req.Period {
 		case "y", "q", "m":
 			req.StartDate = "2000-01-01"
 		case "w":
-			req.StartDate = "2016-06-01"
+			req.StartDate = "2016-01-01"
 		default:
-			req.StartDate = "2019-06-01"
+			req.StartDate = "2019-01-01"
 		}
 	}
+
 	t, _ := time.Parse("2006-01-02", req.StartDate)
 
-	// groupBy
-	group := bson.M{
-		"_id":         groupById,
-		"time":        bson.M{"$last": "$time"},
-		"open":        bson.M{"$first": "$open"},
-		"close":       bson.M{"$last": "$close"},
-		"high":        bson.M{"$max": "$high"},
-		"low":         bson.M{"$min": "$low"},
-		"ratio":       bson.M{"$last": "$ratio"},
-		"main_net":    bson.M{"$sum": "$main_net"},
-		"vol":         bson.M{"$sum": "$vol"},
-		"amount":      bson.M{"$sum": "$amount"},
-		"pct_chg":     bson.M{"$sum": "$pct_chg"},
-		"tr":          bson.M{"$sum": "$tr"},
-		"rzrqye":      bson.M{"$last": "$rzrqye"},
-		"winner_rate": bson.M{"$last": "$winner_rate"},
-	}
-
-	// query
 	var data []bson.M
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
-		Group(group).Sort(bson.M{"time": 1}).Do()).All(&data)
+		Group(bson.M{
+			"_id":         bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
+			"time":        bson.M{"$last": "$time"},
+			"open":        bson.M{"$first": "$open"},
+			"close":       bson.M{"$last": "$close"},
+			"high":        bson.M{"$max": "$high"},
+			"low":         bson.M{"$min": "$low"},
+			"ratio":       bson.M{"$last": "$ratio"},
+			"main_net":    bson.M{"$sum": "$main_net"},
+			"vol":         bson.M{"$sum": "$vol"},
+			"amount":      bson.M{"$sum": "$amount"},
+			"pct_chg":     bson.M{"$sum": "$pct_chg"},
+			"tr":          bson.M{"$sum": "$tr"},
+			"rzrqye":      bson.M{"$last": "$rzrqye"},
+			"winner_rate": bson.M{"$last": "$winner_rate"},
+		}).
+		Sort(bson.M{"time": 1}).Do()).All(&data)
 
 	if req.Head > 0 {
 		midware.Success(c, data[:req.Head])
@@ -421,72 +352,6 @@ func GetKline(c *gin.Context) {
 		midware.Success(c, data[len(data)-req.Tail:])
 		return
 	}
-	midware.Success(c, data)
-}
-
-func DataCenter(c *gin.Context) {
-	// includes topList, blockTrade, events
-	var req struct {
-		Code      string `form:"code"`
-		TradeDate string `form:"trade_date"`
-		Symbol    string `form:"symbol"`
-		Type      string `form:"type"`
-	}
-	c.ShouldBind(&req)
-
-	// query
-	filter := bson.M{}
-	if req.Code != "" {
-		filter["ts_code"] = req.Code
-	}
-	if req.TradeDate != "" {
-		t, _ := time.Parse(time.RFC3339, req.TradeDate)
-		filter["trade_date"] = t.Format("20060102")
-	}
-	if req.Type != "" {
-		filter["type"] = req.Type
-	}
-
-	data := make([]bson.M, 0)
-
-	switch c.Param("path") {
-	case "topList":
-		db.FundDB.Collection("topList").Find(ctx, filter).Sort("-trade_date").
-			Select(bson.M{"_id": 0}).Limit(150).All(&data)
-
-	case "blockTrade":
-		db.FundDB.Collection("blockTrade").Aggregate(ctx, mongox.Pipeline().
-			Match(filter).
-			Lookup("stock", "ts_code", "_id", "stock").
-			Unwind("$stock").
-			Project(bson.M{
-				"_id": 0, "name": "$stock.name", "trade_date": 1,
-				"buyer": 1, "seller": 1, "ts_code": 1, "price": 1, "vol": 1, "amount": 1,
-			}).
-			Sort(bson.M{"trade_date": -1}).
-			Limit(50).Do()).All(&data)
-
-	case "events":
-		db.FundDB.Collection("events").Aggregate(ctx, mongox.Pipeline().
-			Match(filter).
-			Lookup("stock", "ts_code", "_id", "stock").
-			Unwind("$stock").
-			Project(bson.M{
-				"_id": 0, "name": "$stock.name", "ann_date": 1, "end_date": 1,
-				"vol": 1, "amount": 1, "ts_code": 1, "high_limit": 1,
-			}).
-			Sort(bson.M{"ann_date": -1}).
-			Limit(50).Do()).All(&data)
-
-	case "fina":
-		db.Fina.Find(ctx, bson.M{"ts_code": req.Code, "end_type": "4"}).
-			Sort("end_date").Select(bson.M{"_id": 0}).All(&data)
-
-	default:
-		midware.Error(c, errors.New("page not found"), http.StatusNotFound)
-		return
-	}
-
 	midware.Success(c, data)
 }
 
@@ -503,8 +368,20 @@ func GetAllStock(c *gin.Context) {
 func DetailBK(c *gin.Context) {
 	var data []bson.M
 	db.Stock.Find(ctx, bson.M{"type": c.Query("type")}).Select(bson.M{
-		"name": 1, "pct_chg": 1, "pct_leader": 1, "main_net_leader": 1, "main_net": 1, "net": 1, "count": 1,
+		"name": 1, "pct_chg": 1, "amount": 1, "main_net": 1, "net": 1,
 	}).All(&data)
+	midware.Success(c, data)
+}
+
+func DetailBKGlobal(c *gin.Context) {
+	var data []bson.M
+	db.Stock.Aggregate(ctx, mongox.Pipeline().
+		Match(bson.M{"type": "I1"}).
+		Lookup("stock", "members", "_id", "children").
+		Project(bson.M{
+			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "count": 1,
+			"children": bson.M{"_id": 1, "name": 1, "amount": 1, "pct_chg": 1, "mc": 1},
+		}).Do()).All(&data)
 	midware.Success(c, data)
 }
 
@@ -636,7 +513,8 @@ func ChangeGroup(c *gin.Context) {
 
 func InGroup(c *gin.Context) {
 	code := c.Query("code")
-	if cache.Stock.Exist(code) {
+	res, _ := db.Stock.Find(ctx, bson.M{"_id": code}).Count()
+	if res == 0 {
 		midware.Error(c, errors.New("code not exist"))
 		return
 	}

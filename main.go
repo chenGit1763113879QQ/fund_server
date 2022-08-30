@@ -33,8 +33,8 @@ func main() {
 		POST("/newAuth", user.Register).
 		GET("/info", midware.Authorize, user.GetInfo)
 
-	api.Use(midware.Authorize)
-	ws.Use(midware.Authorize)
+	// api.Use(midware.Authorize)
+	// ws.Use(midware.Authorize)
 
 	ws.Group("/stock").
 		GET("/list", stock.ConnectCList).
@@ -47,7 +47,6 @@ func main() {
 		GET("/list", stock.GetStockList).
 		GET("/chart/kline", stock.GetKline).
 		GET("/predict", stock.PredictKline).
-		GET("/center/:path", stock.DataCenter).
 		GET("/group", stock.GetGroups).
 		POST("/group", stock.AddGroup).
 		PUT("/group", stock.ChangeGroup).
@@ -57,7 +56,8 @@ func main() {
 		GET("/group/in", stock.InGroup)
 
 	api.Group("/market").
-		GET("/bk", stock.DetailBK)
+		GET("/bk", stock.DetailBK).
+		GET("/bkpro", stock.DetailBKGlobal)
 
 	api.Group("/article").
 		GET("/:id", user.GetArticle).

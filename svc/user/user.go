@@ -231,8 +231,7 @@ func GetNews(c *gin.Context) {
 		Skip(pageSize*(req.Page-1)).
 		Limit(pageSize).
 		Project(bson.M{
-			"title": 1, "content": 1, "createAt": 1,
-			"user._id": 1, "user.name": 1, "comments": 1,
+			"title": 1, "content": 1, "createAt": 1, "user._id": 1, "user.name": 1,
 		}).Do()).All(&data)
 
 	midware.Auto(c, err, data)

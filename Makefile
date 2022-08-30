@@ -1,8 +1,8 @@
 run:
-	go run main.go
+	go run -tags=sonic,nomsgpack main.go
 
 build:
-	go build .
+	go build -tags=sonic,nomsgpack .
 
 tidy:
 	go env -w GOPROXY=https://goproxy.cn

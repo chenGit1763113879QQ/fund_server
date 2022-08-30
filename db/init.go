@@ -40,7 +40,7 @@ var (
 
 // init database
 func init() {
-	client, err := qmgo.NewClient(ctx, &qmgo.Config{Uri: "mongodb://" + mongoHost})
+	client, err := qmgo.NewClient(ctx, &qmgo.Config{Uri: "mongodb://" + mongoHost + "/?compressors=zstd"})
 	if err != nil {
 		panic(err)
 	}

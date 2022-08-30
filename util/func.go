@@ -127,14 +127,24 @@ func IsChinese(str string) bool {
 	return false
 }
 
-func UnmarshalJSON(body []byte, data any, path ...any) error {
-	node, err := sonic.Get(body, path)
-	if err != nil {
-		return err
+func UnmarshalJSON(body []byte, data any, path ...string) error {
+	var raw string
+	switch len(path) {
+	case 0:
+		node, _ := sonic.Get(body)
+		raw, _ = node.Raw()
+	case 1:
+		node, _ := sonic.Get(body, path[0])
+		raw, _ = node.Raw()
+	case 2:
+		node, _ := sonic.Get(body, path[0], path[1])
+		raw, _ = node.Raw()
+	case 3:
+		node, _ := sonic.Get(body, path[0], path[1], path[2])
+		raw, _ = node.Raw()
+	default:
+		log.Error().Msg("to much paths")
 	}
-	raw, err := node.Raw()
-	if err != nil {
-		return err
-	}
+
 	return sonic.UnmarshalString(raw, &data)
 }

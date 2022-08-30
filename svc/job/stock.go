@@ -140,7 +140,7 @@ func updateMinute(s []model.Stock, m *model.Market) {
 
 	if m.FreqIsZero() {
 		db.MinuteDB.CreateCollection(ctx, date)
-		_ = db.MinuteDB.Collection(date).EnsureIndexes(ctx, []string{"_id.code,_id.time"}, nil)
+		db.MinuteDB.Collection(date).EnsureIndexes(ctx, []string{"_id.code,_id.time"}, nil)
 	}
 
 	a := time.Now()
