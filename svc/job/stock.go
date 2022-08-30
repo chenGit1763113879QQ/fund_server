@@ -6,6 +6,7 @@ import (
 	"fund/cache"
 	"fund/db"
 	"fund/model"
+	"fund/pikachu"
 	"fund/util"
 	"strings"
 	"sync"
@@ -92,6 +93,7 @@ func getRealStock(m *model.Market) {
 			if data[i].Price > 0 {
 				// update cache
 				cache.Stock.Store(data[i].Id, data[i])
+				pikachu.Coll("stock").Store(data[i].Id, data[i])
 
 				// update db
 				if freq >= 1 {
@@ -175,37 +177,35 @@ func GetKline(items bson.M) {
 		return
 	}
 
-	for _, p := range model.Params {
-		url := fmt.Sprintf("http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=%s&fields1=f1&fields2=f51,f52,f53,f54,f55,f56,f57,f59,f61&klt=%d&end=20500101&lmt=5000&fqt=1", cid, p.Params)
-		body, _ := util.GetAndRead(url)
+	url := fmt.Sprintf("http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=%s&fields1=f1&fields2=f51,f52,f53,f54,f55,f56,f57,f59,f61&klt=%d&end=20500101&lmt=5000&fqt=1", cid, 101)
+	body, _ := util.GetAndRead(url)
 
-		var data []string
-		util.UnmarshalJSON(body, &data, "data", "klines")
+	var data []string
+	util.UnmarshalJSON(body, &data, "data", "klines")
 
-		// read csv
-		df := dataframe.ReadCSV(strings.NewReader("time,open,close,high,low,vol,amount,pct_chg,tr\n" + strings.Join(data, "\n"))).
-			Arrange(dataframe.Order{Colname: "time", Reverse: true})
+	// read csv
+	df := dataframe.ReadCSV(strings.NewReader("time,open,close,high,low,vol,amount,pct_chg,tr\n" + strings.Join(data, "\n"))).
+		Arrange(dataframe.Order{Colname: "time", Reverse: true})
 
-		coll := db.KlineDB.Collection(util.Md5Code(code))
+	coll := db.KlineDB.Collection(util.Md5Code(code))
 
-		// ensure index
-		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
+	// ensure index
+	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
 
-		bulk := coll.Bulk()
-		docs := make([]map[string]interface{}, 0)
+	bulk := coll.Bulk()
+	docs := make([]map[string]interface{}, 0)
 
-		// insert documents
-		for _, i := range df.Maps() {
-			i["code"] = code
-			i["time"], _ = time.Parse(p.Format, i["time"].(string))
+	// insert documents
+	for _, i := range df.Maps() {
+		i["code"] = code
+		i["time"], _ = time.Parse("2006-01-02", i["time"].(string))
 
-			docs = append(docs, i)
-			bulk.UpdateOne(bson.M{"code": code, "time": i["time"]}, bson.M{"$set": i})
-		}
-
-		bulk.Run(ctx)
-		coll.InsertMany(ctx, docs)
+		docs = append(docs, i)
+		bulk.UpdateOne(bson.M{"code": code, "time": i["time"]}, bson.M{"$set": i})
 	}
+
+	bulk.Run(ctx)
+	coll.InsertMany(ctx, docs)
 
 	// update cache
 	db.LimitDB.SetEX(ctx, "kline:"+code, "1", time.Hour*12)

@@ -11,13 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var (
-	Params = []KlineParams{
-		{"day", "2006-01-02", 101},
-		{"min", "2006-01-02 15:04", 5},
-	}
-	pinyinArg = pinyin.NewArgs()
-)
+var pinyinArg = pinyin.NewArgs()
 
 type Market struct {
 	Status     bool
@@ -286,16 +280,10 @@ type Range struct {
 	Unit  float64 `json:"unit"`
 }
 
-type KlineParams struct {
-	Period string
-	Format string
-	Params int
-}
-
 type Kline struct {
 	Time time.Time `bson:"time"`
 
-	Close float64 `bson:"close_qfq"`
+	Close  float64 `bson:"close_qfq"`
 	PctChg float64 `bson:"pct_chg"`
 	Amount float64
 	Tr     float64

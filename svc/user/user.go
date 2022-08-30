@@ -130,7 +130,6 @@ func Register(c *gin.Context) {
 func EmailCode(c *gin.Context) {
 	receiver := c.Query("email")
 
-	// 是否存在缓存
 	res, err := db.LimitDB.Exists(ctx, "email:"+receiver).Result()
 	if res >= 1 || err != nil {
 		midware.Error(c, errors.New("请不要频繁请求该接口"))
@@ -139,22 +138,20 @@ func EmailCode(c *gin.Context) {
 
 	e := email.NewEmail()
 
-	// 设置发送方的邮箱
 	e.From = fmt.Sprintf("lucario.ltd <%s>", adminEmail)
-	// 设置接收方的邮箱
 	e.To = []string{receiver}
-	// 设置主题
+
 	e.Subject = "正在使用邮箱登录"
-	// 生成验证码
+
 	code := fmt.Sprintf("%06v", rand.New(rand.NewSource(time.Now().UnixNano())).Int31n(1000000))
-	// 设置缓存
+
 	db.LimitDB.SetEX(ctx, "email:"+receiver, code, time.Minute*5)
 	e.HTML = []byte(
 		"五分钟有效，请妥善保管，不要告诉任何人！" +
 			fmt.Sprintf("<div>验证码：%s</div>", code) +
 			`<div><a href="http://lucario.ltd">来自lucario.ltd</a></div>`)
 
-	// 配置服务器并发送
+
 	err = e.Send("smtp.qq.com:25", smtp.PlainAuth("", adminEmail, adminToken, "smtp.qq.com"))
 
 	midware.Auto(c, err, nil, "验证码已发送")
