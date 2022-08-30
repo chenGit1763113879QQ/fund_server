@@ -58,21 +58,15 @@ class DataBase:
     def stock_indicate(self):
         def func(dt: str):
             df = pd.concat([
-                # 技术指标
                 pro.stk_factor(trade_date=dt).set_index('ts_code'),
-                # 每日指标
                 pro.daily_basic(trade_date=dt,
                                 fields='turnover_rate,volume_ratio,ts_code,pe_ttm,pb,ps_ttm,dv_ttm').set_index(
                     'ts_code'),
-                # 资金流向
                 pro.moneyflow(trade_date=dt,
                               fields="ts_code,buy_lg_amount,sell_lg_amount,buy_elg_amount,sell_elg_amount,net_mf_amount").set_index(
                     'ts_code'),
-                # 筹码分析
                 pro.cyq_perf(trade_date=dt, fields='ts_code,weight_avg,winner_rate').set_index('ts_code'),
-                # 北向资金
                 pro.hk_hold(trade_date=dt, fields="ts_code,ratio").set_index('ts_code'),
-                # 两融余额
                 pro.margin_detail(trade_date=dt, fields="ts_code,rzrqye").set_index('ts_code'),
 
             ], axis=1).rename(

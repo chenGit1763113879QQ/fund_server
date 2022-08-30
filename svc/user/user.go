@@ -225,7 +225,7 @@ func GetNews(c *gin.Context) {
 		filter["tag"] = req.Code
 	}
 
-	err := db.Article.Aggregate(ctx, mongox.Pipeline().
+	db.Article.Aggregate(ctx, mongox.Pipeline().
 		Match(filter).
 		Sort(bson.M{"createAt": -1}).
 		Skip(pageSize*(req.Page-1)).
@@ -234,5 +234,5 @@ func GetNews(c *gin.Context) {
 			"title": 1, "content": 1, "createAt": 1, "user._id": 1, "user.name": 1,
 		}).Do()).All(&data)
 
-	midware.Auto(c, err, data)
+	midware.Success(c, data)
 }

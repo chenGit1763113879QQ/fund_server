@@ -5,7 +5,7 @@ import pandas as pd
 import progressbar
 import pymongo
 import tushare as ts
-from pymongo import UpdateOne, InsertOne
+from pymongo import UpdateOne
 
 pro = ts.pro_api(token='8dbaa93be7f8d09210ca9cb0843054417e2820203201c0f3f7643410')
 
@@ -19,23 +19,16 @@ class DailyInfo:
         self.client = pymongo.MongoClient("mongodb://localhost:27017")["fund"]
         self.realStock = self.client["stock"]
 
-        pool = futures.ThreadPoolExecutor(max_workers=8)
+        pool = futures.ThreadPoolExecutor(max_workers=5)
         pool.submit(self.stock_basic)
         pool.submit(self.index_members)
         pool.submit(self.ths_bk)
         pool.submit(self.fina_data)
-        pool.submit(self.events)
-        pool.submit(self.after_trade)
         pool.shutdown()
 
     # 基本信息
     def stock_basic(self):
         opts = []
-        # 涨跌停价格
-        limit = pro.stk_limit()
-        for i in limit.itertuples():
-            opts.append(UpdateOne({"_id": i.ts_code}, {"$set": {'up_limit': i.up_limit, 'down_limit': i.down_limit}}))
-
         # 北向资金持股
         hk = pro.hk_hold()
         for i in hk.itertuples():
@@ -145,71 +138,5 @@ class DailyInfo:
 
                 df['ts_code'] = df.index
                 self.client['fina'].insert_many([i.dropna().to_dict() for index, i in df.iterrows()])
-
-    # 公司大事
-    def events(self):
-        data_range = 10
-        docs = []
-
-        # 股份回购
-        df = pro.repurchase()
-        for i in range(data_range):
-            temp = pro.repurchase(end_date=df['ann_date'].values[-1])
-            df = pd.concat([df, temp])
-
-        df['type'] = '股份回购'
-        docs += [InsertOne(i.dropna().to_dict()) for idx, i in df.iterrows()]
-
-        # 股权变动
-        df = pro.stk_holdertrade()
-        for i in range(data_range):
-            temp = pro.stk_holdertrade(end_date=df['ann_date'].min())
-            df = pd.concat([df, temp])
-
-        df['type'] = '股权变动'
-        docs += [InsertOne(i.dropna().to_dict()) for idx, i in df.iterrows()]
-
-        # 业绩预告
-        df = pro.forecast_vip()
-        for i in range(data_range):
-            temp = pro.forecast_vip(end_date=df['ann_date'].min())
-            df = pd.concat([df, temp])
-
-        df = df.rename(columns={'type': 'change_type'})
-        df = df.drop_duplicates(subset=['ts_code', 'end_date'])
-        df['type'] = '业绩预告'
-        docs += [InsertOne(i.dropna().to_dict()) for idx, i in df.iterrows()]
-
-        # 业绩快报
-        df = pro.express_vip()
-        df = df.drop_duplicates(subset=['ts_code', 'end_date'])
-        df['type'] = '业绩快报'
-        docs += [InsertOne(i.dropna().to_dict()) for idx, i in df.iterrows()]
-
-        # 写入数据库
-        self.client.drop_collection('events')
-        self.client['events'].create_index([("ts_code", 1), ("type", 1)])
-        self.client['events'].bulk_write(docs)
-
-    # 盘后数据
-    def after_trade(self):
-        # 大宗交易
-        df = pro.block_trade(start_date='20220301')
-        for i in range(10):
-            temp = pro.block_trade(end_date=df['trade_date'].min())
-            df = pd.concat([df, temp])
-
-        self.client.drop_collection('blockTrade')
-        self.client['blockTrade'].insert_many(df.fillna('').to_dict(orient='records'))
-
-        # 龙虎榜
-        df = pd.DataFrame()
-        for date in cal['trade_date']:
-            temp = pro.top_list(trade_date=date)
-            df = pd.concat([df, temp])
-
-        self.client.drop_collection('topList')
-        self.client['topList'].insert_many(df.fillna('').to_dict(orient='records'))
-
 
 t = DailyInfo()
