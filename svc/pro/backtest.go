@@ -28,7 +28,7 @@ func Test1() {
 	// drop collection
 	db.BackDB.Collection("test1").DropCollection(ctx)
 
-	for i := 0; i < 6; i++ {
+	for i := 1; i < 6; i++ {
 		test1(float64(i * 10))
 	}
 }

@@ -42,5 +42,7 @@ func (p *Pool) worker(task func()) {
 
 // Wait For Task End
 func (p *Pool) Wait() {
+	defer close(p.work)
+	defer close(p.sem)
 	p.wg.Wait()
 }

@@ -17,7 +17,7 @@ type Trade struct {
 
 	Logs   []Tick
 	ticks  []Tick
-	Profit *Profit
+	Profits []Profit
 }
 
 type Tick struct {
@@ -67,12 +67,12 @@ func (t *Trade) Sell(k Kline) {
 	avgPrice := util.Mean(holdsPrice)
 
 	// profit
-	t.Profit = &Profit{
+	t.Profits = append(t.Profits, Profit{
 		PctChg:    k.Close / avgPrice,
 		StartTime: t.ticks[0].Time,
 		EndTime:   k.Time,
 		Duration:  k.Time.Sub(t.ticks[0].Time),
-	}
+	})
 
 	// tick logs
 	t.ticks = make([]Tick, 0)
