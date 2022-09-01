@@ -52,8 +52,11 @@ func (s *KlineMap) Range(f func(k string, v []model.Kline)) {
 }
 
 func initKline() {
-	log.Info().Msg("kline start init")
+	log.Debug().Msg("kline start init")
 	p := util.NewPool(5)
+
+	t, _ := time.Parse("2006/01/02", "2017/09/01")
+
 	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
 		// filter
 		if v.Mc > 50*math.Pow(10, 8) {
@@ -61,13 +64,15 @@ func initKline() {
 				var data []model.Kline
 				// get kline
 				db.KlineDB.Collection(util.Md5Code(k)).Aggregate(ctx, mongox.Pipeline().
-					Match(bson.M{"code": k}).Sort(bson.M{"time": 1}).Do()).All(&data)
+					Match(bson.M{"code": k, "time": bson.M{"$gt": t}}).
+					Sort(bson.M{"time": 1}).Do()).All(&data)
 				klineMap.Store(k, data)
 			})
 		}
 	})
+
 	p.Wait()
-	log.Info().Msgf("init kline success, length: %d", klineMap.Length())
+	log.Debug().Msgf("init kline success, length:%d", klineMap.Length())
 }
 
 func Init() {
@@ -75,9 +80,9 @@ func Init() {
 	time.Sleep(time.Second * 5)
 	initKline()
 	for {
-		log.Info().Msg("start jobs...")
+		log.Debug().Msg("start jobs...")
 		Test1()
-		log.Info().Msg("jobs finished")
+		log.Debug().Msg("jobs finished")
 		time.Sleep(time.Hour)
 	}
 }

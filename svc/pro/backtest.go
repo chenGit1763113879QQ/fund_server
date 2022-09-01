@@ -8,21 +8,30 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-// 策略1：低买高卖
+const (
+	SIDE_BUY uint8 = iota
+	SIDE_SELL
+)
+
 func test1(arg float64) {
+	title := "test1"
+
+	trade := model.NewTrade(title, arg)
+	coll := db.BackDB.Collection(title)
+
 	klineMap.Range(func(id string, k []model.Kline) {
 		for i := range k {
 			if k[i].WinnerRate < 2.7 && k[i].Tr < 3.5 && k[i].Pe < 33 {
-				_id := bson.M{"code": id, "time": k[i].Time}
-
-				db.Backtest.UpsertId(ctx,
-					_id, bson.M{"type": "buy", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
+				trade.Buy(k[i])
+				coll.UpsertId(ctx,
+					bson.M{"code": id, "time": k[i].Time},
+					bson.M{"type": SIDE_BUY, "close": k[i].Close, "winner_rate": k[i].WinnerRate})
 
 			} else if k[i].WinnerRate > arg {
-				_id := bson.M{"code": id, "time": k[i].Time}
-
-				db.Backtest.UpsertId(ctx,
-					_id, bson.M{"type": "sell", "close": k[i].Close, "arg": arg, "winner_rate": k[i].WinnerRate})
+				trade.Sell(k[i])
+				coll.UpsertId(ctx,
+					bson.M{"code": id, "time": k[i].Time},
+					bson.M{"type": SIDE_SELL, "close": k[i].Close, "winner_rate": k[i].WinnerRate, "profit": trade.Profit})
 			}
 		}
 	})

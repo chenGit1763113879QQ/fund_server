@@ -100,6 +100,8 @@ func getIndustry(m *model.Market) {
 
 // get market distribution
 func getDistribution(market string) {
+	return
+
 	var data []struct {
 		Count int64 `bson:"count"`
 	}

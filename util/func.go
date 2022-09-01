@@ -138,3 +138,11 @@ func UnmarshalJSON(body []byte, data any, path ...interface{}) error {
 	}
 	return sonic.UnmarshalString(raw, &data)
 }
+
+func Mean[T int | int64 | float64](arr []T) float64 {
+	var sum T
+	for i := range arr {
+		sum += arr[i]
+	}
+	return float64(sum) / float64(len(arr))
+}

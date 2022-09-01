@@ -6,7 +6,6 @@ import (
 	"fund/cache"
 	"fund/db"
 	"fund/model"
-	"fund/pikachu"
 	"fund/util"
 	"strings"
 	"sync"
@@ -93,7 +92,6 @@ func getRealStock(m *model.Market) {
 			if data[i].Price > 0 {
 				// update cache
 				cache.Stock.Store(data[i].Id, data[i])
-				pikachu.Coll("stock").Store(data[i].Id, data[i])
 
 				// update db
 				if freq >= 1 {

@@ -22,30 +22,30 @@ const (
 var (
 	ctx = context.Background()
 
-	LimitDB *redis.Client // 流量控制
+	LimitDB *redis.Client
 
 	FundDB   *qmgo.Database
 	KlineDB  *qmgo.Database
+	BackDB   *qmgo.Database
 	MinuteDB *qmgo.Database
 
-	Stock    *qmgo.Collection // 行情
-	Predict  *qmgo.Collection // 预测
-	Backtest *qmgo.Collection // 回测
-	Events   *qmgo.Collection // 重大事项
-	Fina     *qmgo.Collection // 财务指标
+	Stock   *qmgo.Collection
+	Predict *qmgo.Collection
+	Fina    *qmgo.Collection
 
-	User    *qmgo.Collection // 用户
-	Article *qmgo.Collection // 文章
+	User    *qmgo.Collection
+	Article *qmgo.Collection
 )
 
 // init database
 func init() {
-	client, err := qmgo.NewClient(ctx, &qmgo.Config{Uri: "mongodb://" + mongoHost + "/?compressors=zstd"})
+	client, err := qmgo.NewClient(ctx, &qmgo.Config{Uri: "mongodb://" + mongoHost})
 	if err != nil {
 		panic(err)
 	}
 
 	FundDB = client.Database("fund")
+	BackDB = client.Database("back")
 	KlineDB = client.Database("kline")
 	MinuteDB = client.Database("minute")
 
@@ -53,10 +53,6 @@ func init() {
 	Stock.EnsureIndexes(ctx, nil, []string{"marketType", "type"})
 
 	Predict = FundDB.Collection("predict")
-	Backtest = FundDB.Collection("backtest")
-
-	Events = FundDB.Collection("events")
-	Events.EnsureIndexes(ctx, nil, []string{"type", "ts_code", "ann_date"})
 
 	Fina = FundDB.Collection("fina")
 	Fina.EnsureIndexes(ctx, nil, []string{"ts_code", "end_type"})
