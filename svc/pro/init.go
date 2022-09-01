@@ -55,7 +55,7 @@ func initKline() {
 	log.Debug().Msg("kline start init")
 	p := util.NewPool(5)
 
-	t, _ := time.Parse("2006/01/02", "2017/09/01")
+	t, _ := time.Parse("2006/01/02", "2017/01/01")
 
 	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
 		// filter

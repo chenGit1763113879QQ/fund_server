@@ -5,20 +5,25 @@ import (
 	"time"
 )
 
+const (
+	SIDE_BUY uint8 = iota
+	SIDE_SELL
+)
+
 type Trade struct {
-	Title string
-
+	Code    string
 	Arg     float64
-	ArgName string
+	ArgName string `bson:"arg_name"`
 
-	head   *Tick
-	Profit Profit
+	Logs   []Tick
+	ticks  []Tick
+	Profit *Profit
 }
 
 type Tick struct {
 	Price float64
 	Time  time.Time
-	Next  *Tick
+	Type  uint8
 }
 
 type Profit struct {
@@ -28,46 +33,52 @@ type Profit struct {
 	Duration  time.Duration `bson:"duration"`
 }
 
-func NewTrade(title string, arg float64) *Trade {
-	return &Trade{Title: title, Arg: arg}
+func NewTrade(code string, arg float64, argName string) *Trade {
+	return &Trade{
+		Code:    code,
+		Arg:     arg,
+		ArgName: argName,
+		Logs:    make([]Tick, 0),
+		ticks:   make([]Tick, 0),
+	}
 }
 
 func (t *Trade) Buy(k Kline) {
-	p := t.head
-	for p != nil {
-		p = p.Next
-	}
-	p = &Tick{
+	tick := Tick{
 		Price: k.Close,
 		Time:  k.Time,
+		Type:  SIDE_BUY,
 	}
+	t.Logs = append(t.Logs, tick)
+	t.ticks = append(t.ticks, tick)
 }
 
 func (t *Trade) Sell(k Kline) {
-	if t.head == nil {
+	length := len(t.ticks)
+	if length == 0 {
 		return
 	}
-	holdsPrice := make([]float64, 0)
-	holdsTime := make([]int64, 0)
 
-	p := t.head
-	for {
-		holdsPrice = append(holdsPrice, t.head.Price)
-		holdsTime = append(holdsTime, t.head.Time.Unix())
-		if p.Next == nil {
-			break
-		}
-		p = p.Next
+	holdsPrice := make([]float64, length)
+	for i := range t.ticks {
+		holdsPrice[i] = t.ticks[i].Price
 	}
 
 	avgPrice := util.Mean(holdsPrice)
-	avgTime := util.Mean(holdsTime)
-	pctChg := k.Close / avgPrice
 
-	t.Profit = Profit{
-		PctChg:    pctChg,
-		StartTime: t.head.Time,
-		EndTime:   p.Time,
-		Duration:  time.Duration(avgTime),
+	// profit
+	t.Profit = &Profit{
+		PctChg:    k.Close / avgPrice,
+		StartTime: t.ticks[0].Time,
+		EndTime:   k.Time,
+		Duration:  k.Time.Sub(t.ticks[0].Time),
 	}
+
+	// tick logs
+	t.ticks = make([]Tick, 0)
+	t.Logs = append(t.Logs, Tick{
+		Price: k.Close,
+		Time:  k.Time,
+		Type:  SIDE_SELL,
+	})
 }
