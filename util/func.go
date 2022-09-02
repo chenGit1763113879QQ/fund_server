@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -111,7 +112,8 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 func Md5Code(code string) string {
 	m := md5.New()
 	m.Write([]byte(code))
-	return hex.EncodeToString(m.Sum(nil))[0:2]
+	val := hex.EncodeToString(m.Sum(nil))
+	return fmt.Sprintf("%c%c", val[0], val[1]%8)
 }
 
 func IsChinese(str string) bool {

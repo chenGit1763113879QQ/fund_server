@@ -25,12 +25,6 @@ var (
 	klineMap = &KlineMap{data: make(map[string][]model.Kline)}
 )
 
-func (s *KlineMap) Length() int {
-	s.RLock()
-	defer s.RUnlock()
-	return len(s.data)
-}
-
 func (s *KlineMap) Load(key string) []model.Kline {
 	s.RLock()
 	defer s.RUnlock()
@@ -66,11 +60,13 @@ func initKline() {
 				db.KlineDB.Collection(util.Md5Code(k)).Aggregate(ctx, mongox.Pipeline().
 					Match(bson.M{"code": k, "time": bson.M{"$gt": t}}).
 					Sort(bson.M{"time": 1}).Do()).All(&data)
-				klineMap.Store(k, data)
+				if data != nil {
+					klineMap.Store(k, data)
+				}
 			})
 		}
 	})
 
 	p.Wait()
-	log.Debug().Msgf("init kline success, length:%d", klineMap.Length())
+	log.Debug().Msgf("init kline success, length:%d", len(klineMap.data))
 }

@@ -28,7 +28,6 @@ func closeHist(k []model.Kline) []float64 {
 	return arr
 }
 
-// 执行预测
 func PredictStock() {
 	db.Predict.DropCollection(ctx)
 
@@ -36,29 +35,24 @@ func PredictStock() {
 	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
 		// filter
 		if v.Mc > 50*math.Pow(10, 8) {
-			p.NewTask(func() {
-				predict(k, 30)
-			})
-			p.NewTask(func() {
-				predict(k, 60)
-			})
+			predict(k, 30)
+			predict(k, 60)
 		}
 	})
 	p.Wait()
 }
 
-// 预测算法
 func predict(code string, days int) {
 	src := klineMap.Load(code)
 	if len(src) < days {
 		return
 	}
 
-	// 矩阵转数组
+	// matrix to array
 	arr := closeHist(src)[len(src)-days:]
 	arr = oneness(arr)
 
-	// 结果集
+	// results
 	results := make([]map[string]any, 0)
 
 	klineMap.Range(func(matchCode string, match []model.Kline) {
@@ -69,9 +63,10 @@ func predict(code string, days int) {
 		dates := timeHist(match)
 		closeLine := closeHist(match)
 
-		// 移动窗口
-		for i := 0; i+days+5 < len(match); i += 2 {
-			// 行情矩阵
+		// rolling window
+		for i := 0; i+days+5 < len(match); i++ {
+
+			// matrix
 			mat := make([]float64, days)
 			copy(mat, closeLine[i:i+days])
 
@@ -80,15 +75,14 @@ func predict(code string, days int) {
 
 			if res < 0.25 {
 				results = append(results, map[string]any{
-					"预测股票": code, "匹配股票": matchCode,
-					"匹配日期": dates[i], "匹配天数": days, "标准差": res / float64(days),
+					"p_code": code, "m_code": matchCode,
+					"m_date": dates[i], "m_period": days, "std": res / float64(days),
 				})
 			}
 		}
 	})
 
-	// 保存标准差最小的五条数据
-	res := dataframe.LoadMaps(results).Arrange(dataframe.Order{Colname: "标准差", Reverse: false})
+	res := dataframe.LoadMaps(results).Arrange(dataframe.Order{Colname: "std", Reverse: false})
 	if res.Nrow() > 5 {
 		db.Predict.InsertMany(ctx, res.Maps()[0:5])
 	} else {
@@ -96,7 +90,6 @@ func predict(code string, days int) {
 	}
 }
 
-// 归一化
 func oneness(arr []float64) []float64 {
 	factor := arr[0]
 	for i := range arr {
@@ -105,7 +98,6 @@ func oneness(arr []float64) []float64 {
 	return arr
 }
 
-// 计算标准差
 func std(arr1 []float64, arr2 []float64) float64 {
 	for i := range arr2 {
 		arr2[i] -= arr1[i]

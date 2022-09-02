@@ -27,16 +27,21 @@ func getNews() {
 
 	// 去除多余后缀
 	for i := range stocks {
-		for _, tail := range []string{"-SW", "-W", "-S", "-U", "-WD"} {
-			stocks[i].Name = strings.Split(stocks[i].Name, tail)[0]
+		pre, suf, _ := strings.Cut(stocks[i].Name, "-")
+		switch suf {
+		case "-SW", "-W", "-S", "-U", "-WD":
+			stocks[i].Name = pre
 		}
 	}
-	location, _ := time.LoadLocation("Asia/Shanghai")
+	location, err := time.LoadLocation("Asia/Shanghai")
+	if err != nil {
+		panic(err)
+	}
 
 	for {
 		err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news)
 		if err != nil {
-			return
+			goto SLEEP
 		}
 		for _, n := range news {
 			// 去除【行情】类资讯
@@ -60,6 +65,8 @@ func getNews() {
 				Tag:      codes,
 			})
 		}
+
+		SLEEP:
 		time.Sleep(time.Minute)
 	}
 }

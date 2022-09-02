@@ -151,25 +151,6 @@ type Stk struct {
 	MainNet float64 `bson:"main_net"`
 }
 
-type AHCompare struct {
-	CNCode string `json:"symbol_cn" bson:"cn_code"`
-	CNName string `json:"name_cn" bson:"cn_name"`
-	HKCode string `json:"symbol_hk" bson:"hk_code"`
-	HKName string `json:"name_hk" bson:"hk_name"`
-
-	CNPrice  float64 `json:"current_cn" bson:"cn_price"`
-	CNPctChg float64 `json:"percent_cn" bson:"cn_pct_chg"`
-	HKPrice  float64 `json:"current_hk" bson:"hk_price"`
-	HKPctChg float64 `json:"percent_hk" bson:"hk_pct_chg"`
-
-	Premium float64 `json:"premium"`
-}
-
-func (a *AHCompare) ParseId() {
-	a.CNCode = a.CNCode[2:] + "." + a.CNCode[0:2]
-	a.HKCode += ".HK"
-}
-
 func (s *Stock) CalData(m *Market) {
 	if m.Freq() == 2 {
 		s.Cid = strconv.Itoa(s.CidOld) + "." + s.Id

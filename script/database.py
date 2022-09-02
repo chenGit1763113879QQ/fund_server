@@ -19,7 +19,7 @@ klineDB = pymongo.MongoClient("mongodb://localhost:27017")["kline"]
 
 def md5_code(code: str) -> str:
     val = hashlib.md5(code.encode('utf8')).hexdigest()
-    return val[0:2]
+    return val[0] + str(ord(val[1]) % 8)
 
 
 # 数据库更新类

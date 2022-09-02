@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fund/midware"
+	"fund/svc/pro"
 	"fund/svc/stock"
 	"fund/svc/user"
 	"net/http"
@@ -20,7 +21,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// go pro.Init()
+	go pro.Init()
 
 	r.Use(midware.FlowController)
 

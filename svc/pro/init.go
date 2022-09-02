@@ -21,10 +21,14 @@ func Init() {
 	// wait for init
 	time.Sleep(time.Second * 5)
 	initKline()
-	
+
 	for {
 		log.Debug().Msg("start jobs...")
+
+		// do something
 		WinRate()
+		PredictStock()
+
 		log.Debug().Msg("jobs finished")
 		time.Sleep(time.Hour)
 	}
