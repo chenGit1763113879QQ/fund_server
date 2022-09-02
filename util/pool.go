@@ -33,10 +33,11 @@ func (p *Pool) NewTask(task func()) {
 func (p *Pool) worker(task func()) {
 	defer func() { <-p.sem }()
 
-	for {
+	ok := true
+	for ok {
 		task()
 		p.wg.Done()
-		task = <-p.work
+		task, ok = <-p.work
 	}
 }
 

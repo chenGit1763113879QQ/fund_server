@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-gota/gota/dataframe"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -115,8 +114,6 @@ func getRealStock(m *model.Market) {
 				go getIndustry(m)
 				go getMainFlow()
 				go getNorthMoney()
-				go getAHCompare()
-				go getMarketInfo()
 			}
 		}
 		if m.Type == "stock" {
@@ -160,67 +157,4 @@ func updateMinute(s []model.Stock, m *model.Market) {
 		}
 	}
 	go bulk.Run(ctx)
-}
-
-func GetKline(items bson.M) {
-	code := items["_id"].(string)
-	cid, ok := items["cid"].(string)
-	if !ok {
-		return
-	}
-
-	// find cache
-	res, _ := db.LimitDB.Exists(ctx, "kline:"+code).Result()
-	if res > 0 {
-		return
-	}
-
-	url := fmt.Sprintf("http://push2his.eastmoney.com/api/qt/stock/kline/get?secid=%s&fields1=f1&fields2=f51,f52,f53,f54,f55,f56,f57,f59,f61&klt=%d&end=20500101&lmt=5000&fqt=1", cid, 101)
-	body, _ := util.GetAndRead(url)
-
-	var data []string
-	util.UnmarshalJSON(body, &data, "data", "klines")
-
-	// read csv
-	df := dataframe.ReadCSV(strings.NewReader("time,open,close,high,low,vol,amount,pct_chg,tr\n" + strings.Join(data, "\n"))).
-		Arrange(dataframe.Order{Colname: "time", Reverse: true})
-
-	coll := db.KlineDB.Collection(util.Md5Code(code))
-
-	// ensure index
-	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-
-	bulk := coll.Bulk()
-	docs := make([]map[string]interface{}, 0)
-
-	// insert documents
-	for _, i := range df.Maps() {
-		i["code"] = code
-		i["time"], _ = time.Parse("2006-01-02", i["time"].(string))
-
-		docs = append(docs, i)
-		bulk.UpdateOne(bson.M{"code": code, "time": i["time"]}, bson.M{"$set": i})
-	}
-
-	bulk.Run(ctx)
-	coll.InsertMany(ctx, docs)
-
-	// update cache
-	db.LimitDB.SetEX(ctx, "kline:"+code, "1", time.Hour*12)
-}
-
-func getAHCompare() {
-	url := "https://xueqiu.com/service/v5/stock/ah/compare?page=1&order=desc&order_by=premium&size=2000"
-	body, _ := util.GetAndRead(url)
-
-	var data []model.AHCompare
-	util.UnmarshalJSON(body, &data, "data", "items")
-
-	bulk := db.Stock.Bulk()
-	for _, i := range data {
-		i.ParseId()
-		bulk.UpdateId(i.CNCode, bson.M{"$set": bson.M{"AH": i}})
-		bulk.UpdateId(i.HKCode, bson.M{"$set": bson.M{"AH": i}})
-	}
-	bulk.Run(ctx)
 }

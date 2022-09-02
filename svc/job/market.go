@@ -15,9 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const StkHost = "https://flash-api.xuangubao.cn/api"
-
-// update industry
 func getIndustry(m *model.Market) {
 	var data []model.Industry
 
@@ -98,7 +95,6 @@ func getIndustry(m *model.Market) {
 	minBulk.Run(ctx)
 }
 
-// get market distribution
 func getDistribution(market string) {
 	return
 
@@ -178,11 +174,4 @@ func getMarketStatus() {
 			}
 		}
 	}
-}
-
-func getMarketInfo() {
-	url := StkHost + "/market_indicator/line?fields=rise_count,fall_count,yesterday_limit_up_avg_pcp,limit_up_count,limit_down_count,limit_up_broken_count,limit_up_broken_ratio,market_temperature"
-	body, _ := util.GetAndRead(url)
-
-	util.UnmarshalJSON(body, &cache.MarketHot, "data")
 }

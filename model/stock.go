@@ -283,7 +283,7 @@ type Range struct {
 type Kline struct {
 	Time time.Time `bson:"time"`
 
-	Close  float64 `bson:"close_qfq"`
+	Close  float64 `bson:"close_hfq"`
 	PctChg float64 `bson:"pct_chg"`
 	Amount float64
 	Tr     float64

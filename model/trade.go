@@ -15,8 +15,8 @@ type Trade struct {
 	Arg     float64
 	ArgName string `bson:"arg_name"`
 
-	Logs   []Tick
-	ticks  []Tick
+	Logs    []Tick
+	ticks   []Tick
 	Profits []Profit
 }
 
@@ -68,7 +68,7 @@ func (t *Trade) Sell(k Kline) {
 
 	// profit
 	t.Profits = append(t.Profits, Profit{
-		PctChg:    k.Close / avgPrice,
+		PctChg:    (k.Close/avgPrice - 1) * 100,
 		StartTime: t.ticks[0].Time,
 		EndTime:   k.Time,
 		Duration:  k.Time.Sub(t.ticks[0].Time),
