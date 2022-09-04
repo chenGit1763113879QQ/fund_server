@@ -19,15 +19,15 @@ var (
 	ctx = context.Background()
 
 	Markets = []*model.Market{
-		{Name: "CN", Type: "stock", Fs: "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048", Size: 5500},
-		{Name: "CN", Type: "fund", Fs: "b:MK0021,b:MK0023", Size: 600},
-		{Name: "CN", Type: "index", Fs: "m:1+s:2,m:0+t:5", Size: 400},
+		{StrName: "CN", Name: util.MARKET_CN, Type: util.TYPE_STOCK, Fs: "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048", Size: 5500},
+		{StrName: "CN", Name: util.MARKET_CN, Type: util.TYPE_FUND, Fs: "b:MK0021,b:MK0023", Size: 600},
+		{StrName: "CN", Name: util.MARKET_CN, Type: util.TYPE_INDEX, Fs: "m:1+s:2,m:0+t:5", Size: 400},
 
-		{Name: "HK", Type: "stock", Fs: "m:128+t:3,m:128+t:4", Size: 1500},
-		{Name: "HK", Type: "index", Fs: "i:100.HSI,i:100.HSCEI,i:124.HSTECH", Size: 10},
+		{StrName: "HK", Name: util.MARKET_HK, Type: util.TYPE_STOCK, Fs: "m:128+t:3,m:128+t:4", Size: 1500},
+		{StrName: "HK", Name: util.MARKET_HK, Type: util.TYPE_INDEX, Fs: "i:100.HSI,i:100.HSCEI,i:124.HSTECH", Size: 10},
 
-		{Name: "US", Type: "stock", Fs: "m:105,m:106,m:107", Size: 2500},
-		{Name: "US", Type: "index", Fs: "i:100.NDX,i:100.DJIA,i:100.SPX", Size: 10},
+		{StrName: "US", Name: util.MARKET_US, Type: util.TYPE_STOCK, Fs: "m:105,m:106,m:107", Size: 2500},
+		{StrName: "US", Name: util.MARKET_US, Type: util.TYPE_INDEX, Fs: "i:100.NDX,i:100.DJIA,i:100.SPX", Size: 10},
 	}
 
 	Cond = sync.NewCond(&sync.Mutex{})
@@ -71,8 +71,8 @@ func getRealStock(m *model.Market) {
 
 	for {
 		freq := m.Freq()
-		if freq == 2 && m.Type == "stock" {
-			log.Info().Msgf("updating stock[%s][%d]", m.Name, freq)
+		if freq == 2 && m.Type == util.TYPE_STOCK {
+			log.Info().Msgf("updating stock[%d]", m.Name)
 		}
 
 		newUrl := url + strings.Join(stk.GetJsonFields(freq), ",")
@@ -105,21 +105,21 @@ func getRealStock(m *model.Market) {
 		}
 		// update cache
 		cache.Stock.Stores(keys, data)
-		
+
 		bulk.Run(ctx)
 
 		updateMinute(data, m)
 
-		if m.Type == "stock" && freq >= 1 {
+		if m.Type == util.TYPE_STOCK && freq >= 1 {
 			go getDistribution(m.Name)
 
-			if m.Name == "CN" {
+			if m.Name == util.MARKET_CN {
 				go getIndustry(m)
 				go getMainFlow()
 				go getNorthMoney()
 			}
 		}
-		if m.Type == "stock" {
+		if m.Type == util.TYPE_STOCK {
 			Cond.Broadcast()
 		}
 		m.Incr()

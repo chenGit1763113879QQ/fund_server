@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"fund/model"
+	"fund/util"
 	"sync"
 	"time"
 
@@ -78,7 +79,7 @@ func (s *StockMap) RangeForCNStock(f func(k string, v model.Stock)) {
 	s.RLock()
 	defer s.RUnlock()
 	for k, v := range s.data {
-		if v.MarketType == "CN" && v.Type == "stock" {
+		if v.MarketType == util.MARKET_CN && v.Type == util.TYPE_STOCK {
 			f(k, v)
 		}
 	}
@@ -100,6 +101,6 @@ func (s *StockMap) Watch(ctx context.Context, onWatch func(any), keys []string) 
 				}
 			}
 		}
-		time.Sleep(time.Microsecond)
+		time.Sleep(time.Millisecond / 10)
 	}
 }

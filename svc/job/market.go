@@ -73,7 +73,7 @@ func getIndustry(m *model.Market) {
 		i.ConnList = nil
 
 		// price
-		i.Price = i.Close * (1 + i.PctChg/100)
+		i.Price = i.Close * (1 + float64(i.PctChg)/100)
 		if i.Price > i.High {
 			i.High = i.Price
 		}
@@ -95,12 +95,12 @@ func getIndustry(m *model.Market) {
 	minBulk.Run(ctx)
 }
 
-func getDistribution(market string) {
+func getDistribution(market uint8) {
 	return
-
 	var data []struct {
 		Count int64 `bson:"count"`
 	}
+
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"marketType": market, "type": "stock", "price": bson.M{"$gt": 0}}).
 		Bucket(
@@ -115,7 +115,7 @@ func getDistribution(market string) {
 	for i := range data {
 		nums[i] = data[i].Count
 	}
-	if market == "CN" {
+	if market == util.MARKET_CN {
 		nums[0], _ = db.Stock.Find(ctx, bson.M{"marketType": "CN", "type": "stock", "pct_chg": bson.M{"$lt": -9.8}}).Count()
 		label[0] = "跌停"
 		nums[10], _ = db.Stock.Find(ctx, bson.M{"marketType": "CN", "type": "stock", "pct_chg": bson.M{"$gt": 9.8}}).Count()
@@ -156,7 +156,7 @@ func getMarketStatus() {
 		name, _ := item.Get("market").Get("region").String()
 
 		for _, p := range Markets {
-			if p.Name == name {
+			if p.StrName == name {
 				p.StatusName, _ = item.Get("market").Get("status").String()
 				p.Status = p.StatusName == "交易中" || p.StatusName == "集合竞价"
 
