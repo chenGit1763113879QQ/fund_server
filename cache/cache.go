@@ -1,8 +1,11 @@
 package cache
 
 import (
+	"context"
+	"fmt"
 	"fund/model"
 	"sync"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -22,9 +25,6 @@ type StockMap struct {
 }
 
 func (s *StockMap) Exist(key string) bool {
-	if key == "" {
-		return false
-	}
 	s.RLock()
 	defer s.RUnlock()
 	_, ok := s.data[key]
@@ -53,6 +53,19 @@ func (s *StockMap) Store(key string, value model.Stock) {
 	s.data[key] = value
 }
 
+func (s *StockMap) Stores(key []string, value []model.Stock) {
+	if len(key) != len(value) {
+		fmt.Println("not equal length between keys and values")
+	}
+	s.Lock()
+	defer s.Unlock()
+	for i := range key {
+		if value[i].Price > 0 {
+			s.data[key[i]] = value[i]
+		}
+	}
+}
+
 func (s *StockMap) Range(f func(k string, v model.Stock)) {
 	s.RLock()
 	defer s.RUnlock()
@@ -68,5 +81,25 @@ func (s *StockMap) RangeForCNStock(f func(k string, v model.Stock)) {
 		if v.MarketType == "CN" && v.Type == "stock" {
 			f(k, v)
 		}
+	}
+}
+
+func (s *StockMap) Watch(ctx context.Context, onWatch func(any), keys []string) {
+	values := s.Loads(keys)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		default:
+			newValues := s.Loads(keys)
+			for i := range values {
+				if newValues[i] != values[i] {
+					onWatch(newValues[i])
+					values[i] = newValues[i]
+				}
+			}
+		}
+		time.Sleep(time.Microsecond)
 	}
 }

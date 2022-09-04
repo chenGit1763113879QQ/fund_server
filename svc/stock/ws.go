@@ -7,7 +7,6 @@ import (
 	"fund/midware"
 	"fund/model"
 	"fund/svc/job"
-	"fund/util"
 	"fund/util/mongox"
 	"time"
 
@@ -21,26 +20,17 @@ func ConnectCList(c *gin.Context) {
 	ws := model.NewWebSocket(c)
 	defer ws.Conn.Close()
 
-	type ActiveReq struct {
-		Market      string        `json:"market"`
-		Parent      []string      `json:"parent"`
-		MarketRange []model.Range `json:"market_range"`
-		FinaRange   []model.Range `json:"fina_range"`
-	}
 	var req struct {
-		Type   string    `json:"type"`
-		Chart  string    `form:"chart" json:"chart"`
-		List   []string  `json:"list"`
-		Active ActiveReq `json:"active"`
+		Type  string   `json:"type"`
+		Chart string   `json:"chart"`
+		List  []string `json:"list"`
 	}
 	c.ShouldBind(&req)
 
 	uid := c.MustGet("id").(pr.ObjectID)
 
-	// init
 	init := func() {
 		var data model.Groups
-
 		db.User.Aggregate(ctx, mongox.Pipeline().
 			Match(bson.M{"_id": uid}).
 			Lookup("stock", "groups.list", "_id", "stocks").
@@ -49,42 +39,6 @@ func ConnectCList(c *gin.Context) {
 
 		AddChart(req.Chart, data.Stocks)
 		ws.WriteJson(data)
-	}
-
-	// active list
-	getActiveList := func(opt ActiveReq) {
-		filter := bson.M{"marketType": opt.Market, "type": "stock"}
-
-		// parents
-		if opt.Market == "CN" && len(opt.Parent) > 0 {
-			con := make([]string, 0)
-			db.Stock.Find(ctx, bson.M{"_id": bson.M{"$in": opt.Parent}}).Distinct("members", &con)
-
-			filter["_id"] = bson.M{"$in": con}
-		}
-
-		// select range
-		ranges := append(opt.MarketRange, opt.FinaRange...)
-		for _, r := range ranges {
-			if r.Left != 0 || r.Right != 0 {
-				ind := bson.M{}
-				// 左区间
-				if r.Left != 0 {
-					ind["$gte"] = util.Exp(r.Unit > 0, r.Left*r.Unit, r.Left)
-				}
-				// 右区间
-				if r.Right != 0 {
-					ind["$lte"] = util.Exp(r.Unit > 0, r.Right*r.Unit, r.Right)
-				}
-				filter[r.Name] = ind
-			}
-		}
-
-		data := make([]bson.M, 0)
-		db.Stock.Find(ctx, filter).Select(listOpt).Sort("-amount").Limit(10).All(&data)
-
-		AddChart(req.Chart, data)
-		ws.WriteJson(bson.M{"active": data})
 	}
 
 	// listen
@@ -96,35 +50,13 @@ func ConnectCList(c *gin.Context) {
 			switch req.Type {
 			case "refresh":
 				init()
-			case "active":
-				getActiveList(req.Active)
 			}
 		}
 	}()
 
-	priceCache := map[string]float64{}
-
-	// send
-	job.Cond.L.Lock()
-	for ws.Err == nil {
-		job.Cond.Wait()
-
-		switch req.Type {
-		case "list":
-			data := cache.Stock.Loads(req.List)
-			for _, i := range data {
-				if i.Price != priceCache[i.Id] {
-					priceCache[i.Id] = i.Price
-
-					ws.WriteBson(i)
-				}
-			}
-		case "active":
-			getActiveList(req.Active)
-			time.Sleep(time.Second * 2)
-		}
-	}
-	job.Cond.L.Unlock()
+	cache.Stock.Watch(c.Request.Context(), func(i any) {
+		ws.WriteBson(i)
+	}, req.List)
 }
 
 // 股票详情

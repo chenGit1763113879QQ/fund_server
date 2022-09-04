@@ -85,13 +85,13 @@ func getRealStock(m *model.Market) {
 		util.UnmarshalJSON(body, &data, "data", "diff")
 
 		bulk := db.Stock.Bulk()
+		keys := make([]string, len(data))
+
 		for i := range data {
 			data[i].CalData(m)
+			keys[i] = data[i].Id
 
 			if data[i].Price > 0 {
-				// update cache
-				cache.Stock.Store(data[i].Id, data[i])
-
 				// update db
 				if freq >= 1 {
 					bulk.UpdateId(data[i].Id, bson.M{"$set": data[i]})
@@ -103,6 +103,9 @@ func getRealStock(m *model.Market) {
 				}
 			}
 		}
+		// update cache
+		cache.Stock.Stores(keys, data)
+		
 		bulk.Run(ctx)
 
 		updateMinute(data, m)
