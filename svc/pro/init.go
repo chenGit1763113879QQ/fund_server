@@ -10,10 +10,10 @@ import (
 )
 
 const (
+	// types
 	TYPE_WINRATE = "win_rate"
-)
 
-const (
+	// args
 	ARG_WINRATE = "winner_rate"
 )
 

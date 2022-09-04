@@ -113,7 +113,7 @@ func Md5Code(code string) string {
 	m := md5.New()
 	m.Write([]byte(code))
 	val := hex.EncodeToString(m.Sum(nil))
-	return fmt.Sprintf("%c%c", val[0], val[1]%8)
+	return fmt.Sprintf("%X%c", val[0]%8, val[1])
 }
 
 func IsChinese(str string) bool {

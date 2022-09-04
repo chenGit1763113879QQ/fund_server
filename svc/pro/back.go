@@ -3,6 +3,8 @@ package pro
 import (
 	"fund/db"
 	"fund/model"
+
+	"github.com/rs/zerolog/log"
 )
 
 func WinRate() {
@@ -20,6 +22,6 @@ func WinRate() {
 				return k.WinnerRate > arg
 			},
 		)
-
 	}
+	log.Debug().Msgf("%s backtest finished", TYPE_WINRATE)
 }

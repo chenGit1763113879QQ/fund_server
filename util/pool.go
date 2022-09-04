@@ -1,6 +1,7 @@
 package util
 
 import (
+	"runtime"
 	"sync"
 )
 
@@ -15,6 +16,14 @@ func NewPool(size int) *Pool {
 	return &Pool{
 		work: make(chan func()),
 		sem:  make(chan struct{}, size),
+	}
+}
+
+// Return Default CPU Nums Pool
+func DefaultPool() *Pool {
+	return &Pool{
+		work: make(chan func()),
+		sem:  make(chan struct{}, runtime.NumCPU()/2),
 	}
 }
 

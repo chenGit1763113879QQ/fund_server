@@ -47,7 +47,7 @@ func (s *KlineMap) Range(f func(k string, v []model.Kline)) {
 
 func initKline() {
 	log.Debug().Msg("kline start init")
-	p := util.NewPool(5)
+	p := util.DefaultPool()
 
 	t, _ := time.Parse("2006/01/02", "2017/01/01")
 
@@ -66,7 +66,6 @@ func initKline() {
 			})
 		}
 	})
-
 	p.Wait()
 	log.Debug().Msgf("init kline success, length:%d", len(klineMap.data))
 }

@@ -4,12 +4,11 @@ import (
 	"fund/cache"
 	"fund/db"
 	"fund/model"
-	"fund/util"
-	"math"
 	"time"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
+	"github.com/rs/zerolog/log"
 )
 
 func timeHist(k []model.Kline) []time.Time {
@@ -31,15 +30,11 @@ func closeHist(k []model.Kline) []float64 {
 func PredictStock() {
 	db.Predict.DropCollection(ctx)
 
-	p := util.NewPool(5)
-	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
-		// filter
-		if v.Mc > 50*math.Pow(10, 8) {
-			predict(k, 30)
-			predict(k, 60)
-		}
+	cache.Stock.RangeForCNStock(func(k string, _ model.Stock) {
+		predict(k, 30)
+		predict(k, 60)
 	})
-	p.Wait()
+	log.Debug().Msg("predict kline finished")
 }
 
 func predict(code string, days int) {
@@ -50,7 +45,7 @@ func predict(code string, days int) {
 
 	// matrix to array
 	arr := closeHist(src)[len(src)-days:]
-	arr = oneness(arr)
+	oneness(arr)
 
 	// results
 	results := make([]map[string]any, 0)
@@ -70,7 +65,7 @@ func predict(code string, days int) {
 			mat := make([]float64, days)
 			copy(mat, closeLine[i:i+days])
 
-			mat = oneness(mat)
+			oneness(mat)
 			res := std(arr, mat)
 
 			if res < 0.25 {
@@ -90,12 +85,11 @@ func predict(code string, days int) {
 	}
 }
 
-func oneness(arr []float64) []float64 {
+func oneness(arr []float64) {
 	factor := arr[0]
 	for i := range arr {
 		arr[i] /= factor
 	}
-	return arr
 }
 
 func std(arr1 []float64, arr2 []float64) float64 {
