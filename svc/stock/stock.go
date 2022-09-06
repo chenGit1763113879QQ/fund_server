@@ -43,14 +43,14 @@ func GetStockDetail(code string) bson.M {
 			Select(bson.M{"name": 1, "type": 1, "pct_chg": 1}).All(&bk)
 		data["bk"] = bk
 
-		for _, i := range job.Markets {
-			if i.Name == data["marketType"] {
-				data["status"] = i.Status
-				data["status_name"] = i.StatusName
-				data["trade_date"] = i.TradeTime
-				break
-			}
-		}
+		// for _, i := range job.Markets {
+		// 	if i.Name == data["marketType"] {
+		// 		data["status"] = i.Status
+		// 		data["status_name"] = i.StatusName
+		// 		data["trade_date"] = i.TradeTime
+		// 		break
+		// 	}
+		// }
 	}
 	return data
 }

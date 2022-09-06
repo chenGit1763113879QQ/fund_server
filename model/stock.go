@@ -3,9 +3,6 @@ package model
 import (
 	"fmt"
 	"fund/util"
-	"reflect"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/mozillazg/go-pinyin"
@@ -15,15 +12,17 @@ import (
 var pinyinArg = pinyin.NewArgs()
 
 type Market struct {
-	Name  uint8
-	Type  uint8
-	count uint8
+	MarketType uint8
+	Type       uint8
+	count      uint8
 
-	Status     bool
-	Size       uint
-	StrName    string
+	Status bool
+	Size   uint
+
+	StrMarket string
+	StrType   string
+
 	StatusName string // choice: [闭市, 盘前交易, 集合竞价，交易中，休市]
-	Fs         string
 	TradeTime  time.Time
 }
 
@@ -39,13 +38,13 @@ func (m *Market) ReSet() {
 
 func (m *Market) Incr() {
 	m.count++
-	if m.count > 200 {
-		m.count = m.count % 200
+	if m.count > 100 {
+		m.count = m.count % 100
 	}
 }
 
 func (m *Market) Freq() int {
-	if m.count%200 == 0 {
+	if m.count%100 == 0 {
 		return 2
 	}
 	if m.count%10 == 0 {
@@ -63,86 +62,75 @@ type Stock struct {
 	MarketType uint8 `bson:"marketType,omitempty"` // 市场
 	Type       uint8 `bson:"type,omitempty"`       // 类型
 
-	CidOld uint `json:"f13" bson:"-" freq:"2"`   // cid
-	Vol    uint `json:"f5" bson:"vol,omitempty"` // 成交量
-	Buy    uint `json:"f34" bson:"-"`            // 买盘
-	Sell   uint `json:"f35" bson:"-"`            // 卖盘
+	Vol         uint `json:"volume"`                           // 成交量
+	Followers   int  `json:"followers"`                        // 关注数
+	LimitUpDays int  `json:"limitup_days" bson:"limitup_days"` // 涨停天数
 
-	Id   string `json:"f12" bson:"_id"`                     // 代码
-	Cid  string `bson:"cid,omitempty"`                      // cid
-	Name string `json:"f14" bson:"name,omitempty" freq:"2"` // 名称
+	Id   string `json:"symbol" bson:"_id"` // 代码
+	Name string `json:"name"`              // 名称
 
 	Pinyin     string `bson:"pinyin,omitempty"`      // 拼音
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"` // 简单拼音
 
-	PctChg   float32 `json:"f3" bson:"pct_chg"`                     // 涨跌幅
-	Pb       float32 `json:"f23" bson:"pb,omitempty" freq:"1"`      // 市净率
-	PeTtm    float32 `json:"f115" bson:"pe_ttm,omitempty" freq:"1"` // 市盈ttm
-	Amp      float32 `json:"f7" bson:"amp,omitempty" freq:"1"`      // 振幅
-	PctRate  float32 `json:"f22" bson:"pct_rate"`                   // 涨速
-	Tr       float32 `json:"f8" bson:"tr,omitempty" freq:"1"`       // 换手率
-	Wb       float32 `json:"f33" bson:"wb"`                         // 委比
-	Vr       float32 `json:"f10" bson:"vr,omitempty" freq:"1"`      // 量比
-	Pct5min  float32 `json:"f11" bson:"pct_5min"`                   // 5分钟涨幅
-	Pct60day float32 `json:"f24" bson:"pct_60day"`                  // 60日涨幅
-	PctYear  float32 `json:"f25" bson:"pct_year"`                   // 今年涨幅
+	PctChg float64 `json:"percent" bson:"pct_chg"` // 涨跌幅
+	Amp    float64 `json:"amplitude" bson:"amp"`   // 振幅
+	Tr     float64 `json:"turnover_rate"`          // 换手率
+	Vr     float64 `json:"volume_ratio"`           // 量比
 
-	Price  float64 `json:"f2" bson:"price,omitempty"`           // 价格
-	High   float64 `json:"f15" bson:"high,omitempty" freq:"1"`  // 最高
-	Low    float64 `json:"f16" bson:"low,omitempty" freq:"1"`   // 最低
-	Open   float64 `json:"f17" bson:"open,omitempty" freq:"1"`  // 开盘
-	Close  float64 `json:"f18" bson:"close,omitempty" freq:"1"` // 收盘
-	Amount float64 `json:"f6" bson:"amount,omitempty"`          // 成交额
-	Avg    float64 `bson:"avg,omitempty"`                       // 均价
+	FirstPct float64 `json:"first_percent" bson:"first_pct"`       // 上市首日涨幅
+	Pct5m    float64 `json:"percent5m" bson:"pct_5m"`              // 5分钟涨幅
+	PctYear  float64 `json:"current_year_percent" bson:"pct_year"` // 今年涨幅
+	TotalPct float64 `json:"total_percent" bson:"total_pct"`       // 至今涨幅
 
-	Mc         float64 `json:"f20" bson:"mc,omitempty" freq:"1"`          // 总市值
-	Fmc        float64 `json:"f21" bson:"fmc,omitempty" freq:"1"`         // 流通市值
-	TotalShare float64 `json:"f38" bson:"total_share,omitempty" freq:"2"` // 总股本
-	FloatShare float64 `json:"f39" bson:"float_share,omitempty" freq:"2"` // 流通股本
+	Pb    float64 `json:"pb"`                   // 市净率
+	PeTtm float64 `json:"pe_ttm" bson:"pe_ttm"` // 市盈ttm
+	Ps    float64 `json:"ps"`                   // 市销率
+	Eps   float64 `json:"eps"`                  // 每股收益
+	Roe   float64 `json:"roe_ttm"`              // ROE
+	Dv    float64 `json:"dividend_yield"`       // 股息率
+	Pcf   float64 `json:"pcf"`                  // ?
 
-	Net       float64 `bson:"net,omitempty"` // 净流入
-	MainHuge  float64 `json:"f66" bson:"main_huge,omitempty"`
-	MainBig   float64 `json:"f72" bson:"main_big,omitempty"`
-	MainMid   float64 `json:"f78" bson:"main_mid,omitempty"`
-	MainSmall float64 `json:"f84" bson:"main_small,omitempty"`
-	MainNet   float64 `bson:"main_net,omitempty"`                            // 主力净流入
-	Day3Net   float64 `json:"f267" bson:"3day_main_net,omitempty" freq:"1"`  // 3日净流入
-	Day5Net   float64 `json:"f164" bson:"5day_main_net,omitempty" freq:"1"`  // 5日净流入
-	Day10Net  float64 `json:"f174" bson:"10day_main_net,omitempty" freq:"1"` // 10日净流入
+	IncomeYoy    float64 `json:"income_cagr"`     // 营收同比
+	NetProfitYoy float64 `json:"net_profit_cagr"` // 净利润同比
+
+	Price  float64 `json:"current"` // 价格
+	Amount float64 `json:"amount"`  // 成交额
+	Avg    float64 // 均价
+
+	Mc         float64 `json:"market_capital"`                  // 总市值
+	Fmc        float64 `json:"float_market_capital"`            // 流通市值
+	TotalShare float64 `json:"total_shares" bson:"total_share"` // 总股本
+	FloatShare float64 `json:"float_shares" bson:"float_share"` // 流通股本
+
+	MainNet  float64 `json:"main_net_inflows" bson:"main_net"`  // 主力净流入
+	NorthNet float64 `json:"north_net_inflow" bson:"north_net"` // 北向资金净流入
 }
 
 type Industry struct {
+	MarketType uint8 `bson:"marketType,omitempty"`
+	Type       uint8 `bson:"type,omitempty"`
+	Vol        uint  `bson:"vol,omitempty"`
+
 	Id         string `bson:"_id"`
 	Name       string `bson:"name,omitempty"`
-	MarketType string `bson:"marketType,omitempty"`
-	Type       string `bson:"type,omitempty"`
-
 	Pinyin     string `bson:"pinyin,omitempty"`
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"`
-
-	Vol uint `bson:"vol,omitempty"`
 
 	PctChg  float32 `bson:"pct_chg"`
 	Pb      float32 `bson:"pb,omitempty"`
 	PeTtm   float32 `bson:"pe_ttm,omitempty"`
 	Tr      float32 `bson:"tr,omitempty"`
-	Wb      float32 `bson:"wb"`
 	PctYear float32 `bson:"pct_year"`
 
-	Price     float64 `bson:"price,omitempty"`
-	High      float64 `bson:"high,omitempty"`
-	Low       float64 `bson:"low,omitempty"`
-	Open      float64 `bson:"open,omitempty"`
-	Close     float64 `bson:"close,omitempty"`
-	Amount    float64 `bson:"amount,omitempty"`
-	Mc        float64 `bson:"mc,omitempty"`
-	Fmc       float64 `bson:"fmc,omitempty"`
-	Net       float64 `bson:"net"`
-	MainHuge  float64 `bson:"main_huge"`
-	MainBig   float64 `bson:"main_big"`
-	MainMid   float64 `bson:"main_mid"`
-	MainSmall float64 `bson:"main_small"`
-	MainNet   float64 `bson:"main_net"`
+	Price   float64 `bson:"price,omitempty"`
+	High    float64 `bson:"high,omitempty"`
+	Low     float64 `bson:"low,omitempty"`
+	Open    float64 `bson:"open,omitempty"`
+	Close   float64 `bson:"close,omitempty"`
+	Amount  float64 `bson:"amount,omitempty"`
+	Mc      float64 `bson:"mc,omitempty"`
+	Fmc     float64 `bson:"fmc,omitempty"`
+	MainNet float64 `bson:"main_net"`
 
 	ConnList      []Stk `bson:"c,omitempty"`
 	PctLeader     Stk   `bson:"pct_leader"`
@@ -158,11 +146,7 @@ type Stk struct {
 
 func (s *Stock) CalData(m *Market) {
 	if m.Freq() == 2 {
-		s.Cid = fmt.Sprintf("%d", s.CidOld) + "." + s.Id
-		if m.Name == util.MARKET_CN {
-			s.Name = strings.Replace(s.Name, " ", "", -1)
-		}
-		s.MarketType = m.Name
+		s.MarketType = m.MarketType
 		s.Type = m.Type
 
 		// add pinyin
@@ -173,70 +157,24 @@ func (s *Stock) CalData(m *Market) {
 			}
 		}
 	}
-	s.formatId(m)
+
+	// format code
+	switch m.MarketType {
+	case util.MARKET_CN:
+		s.Id = fmt.Sprintf("%s.%s", s.Id[2:], s.Id[0:2])
+
+	case util.MARKET_HK:
+		s.Id += ".HK"
+
+	case util.MARKET_US:
+		s.Id += ".US"
+	}
 
 	if s.Vol > 0 {
 		s.Avg = s.Amount / float64(s.Vol)
-		s.Net = s.Avg * float64(s.Buy-s.Sell)
-		if m.Name == util.MARKET_CN {
+		if m.MarketType == util.MARKET_CN {
 			s.Avg /= 100
 		}
-	}
-	s.MainNet = s.MainHuge + s.MainBig
-}
-
-// get fields
-func (s *Stock) GetJsonFields(freq int) []string {
-	arr := make([]string, 0)
-	types := reflect.TypeOf(s).Elem()
-
-	for i := 0; i < types.NumField(); i++ {
-		tag := types.Field(i).Tag
-
-		if tag.Get("json") != "" {
-			if strconv.Itoa(freq) >= tag.Get("freq") || tag.Get("freq") == "" {
-				arr = append(arr, tag.Get("json"))
-			}
-		}
-	}
-	return arr
-}
-
-// format code
-func (s *Stock) formatId(m *Market) {
-	switch m.Name {
-	case util.MARKET_CN:
-		switch m.Type {
-		case util.TYPE_STOCK:
-			switch s.Id[0] {
-			case '6':
-				s.Id += ".SH"
-			case '0', '3':
-				s.Id += ".SZ"
-			case '8', '4':
-				s.Id += ".BJ"
-			}
-		case util.TYPE_INDEX:
-			switch s.Id[0] {
-			case '0':
-				s.Id += ".SH"
-			case '3':
-				s.Id += ".SZ"
-			}
-		case util.TYPE_FUND:
-			switch s.Id[0] {
-			case '5':
-				s.Id += ".SH"
-			case '1':
-				s.Id += ".SZ"
-			}
-
-		default:
-			// drop
-			s.Price = 0
-		}
-	default:
-		s.Id += "." + m.StrName
 	}
 }
 
@@ -267,18 +205,20 @@ type Range struct {
 }
 
 type Kline struct {
+	PctChg float32 `bson:"pct_chg"`
+	Tr     float32
+
+	Pe float32 `bson:"pe_ttm"`
+	Pb float32
+
 	Time time.Time `bson:"time"`
 
 	Close  float64 `bson:"close_hfq"`
-	PctChg float64 `bson:"pct_chg"`
 	Amount float64
-	Tr     float64
 
 	MainNet float64
 	Net     float64
 
-	Pe float64 `bson:"pe_ttm"`
-	Pb float64
 	// Dv float64 `bson:"dv_ttm"`
 
 	//KDJ_K float64 `bson:"kdj_k"`

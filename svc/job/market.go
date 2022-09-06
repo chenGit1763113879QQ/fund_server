@@ -11,7 +11,6 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/go-gota/gota/dataframe"
-	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -19,24 +18,19 @@ func getIndustry(m *model.Market) {
 	var data []model.Industry
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"type": bson.M{"$in": bson.A{"I1", "I2", "C"}}}).
+		Match(bson.M{"members": 1}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
 			"c":          bson.M{"name": 1, "pct_chg": 1, "main_net": 1},
-			"marketType": "CN",
+			"marketType": util.MARKET_CN,
 			"type":       "$type",
 			"high":       "$high",
 			"low":        "$low",
 			"close":      1,
 			"pct_chg":    bson.M{"$avg": "$c.pct_chg"},
 
-			"main_huge":  bson.M{"$sum": "$c.main_huge"},
-			"main_big":   bson.M{"$sum": "$c.main_big"},
-			"main_mid":   bson.M{"$sum": "$c.main_mid"},
-			"main_small": bson.M{"$sum": "$c.main_small"},
-			"main_net":   bson.M{"$add": bson.A{"$main_huge", "$main_big"}},
+			"main_net": bson.M{"$sum": "$c.main_net"},
 
-			"net":      bson.M{"$sum": "$c.net"},
 			"vol":      bson.M{"$sum": "$c.vol"},
 			"tr":       bson.M{"$avg": "$c.tr"},
 			"amount":   bson.M{"$sum": "$c.amount"},
@@ -44,7 +38,6 @@ func getIndustry(m *model.Market) {
 			"fmc":      bson.M{"$sum": "$c.fmc"},
 			"pe_ttm":   bson.M{"$avg": "$c.pe_ttm"},
 			"pb":       bson.M{"$avg": "$c.pb"},
-			"wb":       bson.M{"$avg": "$c.wb"},
 			"pct_year": bson.M{"$avg": "$c.pct_year"},
 		}).Do()).All(&data)
 
@@ -86,8 +79,7 @@ func getIndustry(m *model.Market) {
 		if m.Status {
 			minBulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "net": i.Net, "huge": i.MainHuge,
-					"big": i.MainBig, "mid": i.MainMid, "small": i.MainSmall, "minutes": newTime.Minute()},
+				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "minutes": newTime.Minute()},
 			)
 		}
 	}
@@ -96,13 +88,14 @@ func getIndustry(m *model.Market) {
 }
 
 func getDistribution(market uint8) {
-	return
 	var data []struct {
 		Count int64 `bson:"count"`
 	}
+	var cn uint8 = util.MARKET_CN
+	var stock uint8 = util.TYPE_STOCK
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"marketType": market, "type": "stock", "price": bson.M{"$gt": 0}}).
+		Match(bson.M{"marketType": market, "type": stock, "price": bson.M{"$gt": 0}}).
 		Bucket(
 			"$pct_chg",
 			bson.A{-99, -10, -7, -5, -3, -0.0001, 0.0001, 3, 5, 7, 10, 999},
@@ -115,10 +108,11 @@ func getDistribution(market uint8) {
 	for i := range data {
 		nums[i] = data[i].Count
 	}
-	if market == util.MARKET_CN {
-		nums[0], _ = db.Stock.Find(ctx, bson.M{"marketType": "CN", "type": "stock", "pct_chg": bson.M{"$lt": -9.8}}).Count()
+
+	if market == cn {
+		nums[0], _ = db.Stock.Find(ctx, bson.M{"marketType": cn, "type": stock, "pct_chg": bson.M{"$lt": -9.8}}).Count()
 		label[0] = "跌停"
-		nums[10], _ = db.Stock.Find(ctx, bson.M{"marketType": "CN", "type": "stock", "pct_chg": bson.M{"$gt": 9.8}}).Count()
+		nums[10], _ = db.Stock.Find(ctx, bson.M{"marketType": cn, "type": stock, "pct_chg": bson.M{"$gt": 9.8}}).Count()
 		label[10] = "涨停"
 	}
 	cache.Numbers.Store(market, bson.M{"label": label, "value": nums})
@@ -156,7 +150,7 @@ func getMarketStatus() {
 		name, _ := item.Get("market").Get("region").String()
 
 		for _, p := range Markets {
-			if p.StrName == name {
+			if p.StrMarket == name {
 				p.StatusName, _ = item.Get("market").Get("status").String()
 				p.Status = p.StatusName == "交易中" || p.StatusName == "集合竞价"
 
@@ -168,8 +162,7 @@ func getMarketStatus() {
 
 				// valid
 				if p.TradeTime.IsZero() {
-					log.Error().Str("error", "trade_time is zero")
-					getMarketStatus()
+					panic("trade_time is zero")
 				}
 			}
 		}

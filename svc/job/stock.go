@@ -19,15 +19,9 @@ var (
 	ctx = context.Background()
 
 	Markets = []*model.Market{
-		{StrName: "CN", Name: util.MARKET_CN, Type: util.TYPE_STOCK, Fs: "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048", Size: 5500},
-		{StrName: "CN", Name: util.MARKET_CN, Type: util.TYPE_FUND, Fs: "b:MK0021,b:MK0023", Size: 600},
-		{StrName: "CN", Name: util.MARKET_CN, Type: util.TYPE_INDEX, Fs: "m:1+s:2,m:0+t:5", Size: 400},
-
-		{StrName: "HK", Name: util.MARKET_HK, Type: util.TYPE_STOCK, Fs: "m:128+t:3,m:128+t:4", Size: 1500},
-		{StrName: "HK", Name: util.MARKET_HK, Type: util.TYPE_INDEX, Fs: "i:100.HSI,i:100.HSCEI,i:124.HSTECH", Size: 10},
-
-		{StrName: "US", Name: util.MARKET_US, Type: util.TYPE_STOCK, Fs: "m:105,m:106,m:107", Size: 2500},
-		{StrName: "US", Name: util.MARKET_US, Type: util.TYPE_INDEX, Fs: "i:100.NDX,i:100.DJIA,i:100.SPX", Size: 10},
+		{MarketType: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz", Size: 5000},
+		{MarketType: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk", Size: 3000},
+		{MarketType: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us", Size: 5000},
 	}
 
 	Cond = sync.NewCond(&sync.Mutex{})
@@ -66,23 +60,22 @@ func GetTradeTime(code string) time.Time {
 }
 
 func getRealStock(m *model.Market) {
-	url := fmt.Sprintf("http://push2.eastmoney.com/api/qt/clist/get?po=1&fid=f20&pz=%d&np=1&fltt=2&pn=1&fs=%s&fields=", m.Size, m.Fs)
-	stk := new(model.Stock)
+	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=%d&order_by=percent&type=%s", m.Size, m.StrType)
 
 	for {
 		freq := m.Freq()
+
 		if freq == 2 && m.Type == util.TYPE_STOCK {
-			log.Info().Msgf("updating stock[%d]", m.Name)
+			log.Info().Msgf("update stock[%s]", m.StrType)
 		}
 
-		newUrl := url + strings.Join(stk.GetJsonFields(freq), ",")
-		body, err := util.GetAndRead(newUrl)
+		body, err := util.GetAndRead(url)
 		if err != nil {
 			continue
 		}
 
 		var data []model.Stock
-		util.UnmarshalJSON(body, &data, "data", "diff")
+		util.UnmarshalJSON(body, &data, "data", "list")
 
 		bulk := db.Stock.Bulk()
 		keys := make([]string, len(data))
@@ -111,9 +104,9 @@ func getRealStock(m *model.Market) {
 		updateMinute(data, m)
 
 		if m.Type == util.TYPE_STOCK && freq >= 1 {
-			go getDistribution(m.Name)
+			// go getDistribution(m.Name)
 
-			if m.Name == util.MARKET_CN {
+			if m.MarketType == util.MARKET_CN {
 				go getIndustry(m)
 				go getMainFlow()
 				go getNorthMoney()
@@ -128,7 +121,7 @@ func getRealStock(m *model.Market) {
 			time.Sleep(time.Millisecond * 100)
 			m.ReSet()
 		}
-		time.Sleep(time.Millisecond * 300)
+		time.Sleep(time.Millisecond * 500)
 	}
 }
 
@@ -153,9 +146,7 @@ func updateMinute(s []model.Stock, m *model.Market) {
 		if i.Price > 0 {
 			bulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg,
-					"net": i.Net, "huge": i.MainHuge, "big": i.MainBig, "mid": i.MainMid,
-					"small": i.MainSmall, "minutes": newTime.Minute()},
+				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg, "minutes": newTime.Minute()},
 			)
 		}
 	}

@@ -15,6 +15,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	MARKET_CN = iota + 1
+	MARKET_HK
+	MARKET_US
+
+	TYPE_STOCK
+	TYPE_INDEX
+	TYPE_FUND
+	TYPE_I1
+	TYPE_I2
+	TYPE_C
+)
+
 // In slice
 func In[T string | int](mem T, arr []T) bool {
 	for i := range arr {
