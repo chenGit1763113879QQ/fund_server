@@ -26,6 +26,17 @@ type Market struct {
 	TradeTime  time.Time
 }
 
+type Index struct {
+	Market struct {
+		Region     string `json:"region"`
+		Status     string
+		StatusName string `json:"status"`
+		TimeZone   string `json:"time_zone"`
+	} `json:"market"`
+
+	Stock Stock `json:"quote"`
+}
+
 func init() {
 	pinyinArg.Fallback = func(r rune, a pinyin.Args) []string {
 		return []string{string(r)}
@@ -57,14 +68,14 @@ func (m *Market) FreqIsZero() bool {
 	return m.count == 0
 }
 
-// freq: 0高频 1中频 2低频 (默认0)
 type Stock struct {
 	MarketType uint8 `bson:"marketType,omitempty"` // 市场
 	Type       uint8 `bson:"type,omitempty"`       // 类型
 
-	Vol         uint `json:"volume"`                           // 成交量
-	Followers   int  `json:"followers"`                        // 关注数
-	LimitUpDays int  `json:"limitup_days" bson:"limitup_days"` // 涨停天数
+	Vol         uint  `json:"volume"`                                     // 成交量
+	Followers   int   `json:"followers"`                                  // 关注数
+	LimitUpDays int   `json:"limitup_days" bson:"limitup_days,omitempty"` // 涨停天数
+	Time        int64 `json:"time" bson:"time,omitempty"`
 
 	Id   string `json:"symbol" bson:"_id"` // 代码
 	Name string `json:"name"`              // 名称
@@ -73,7 +84,7 @@ type Stock struct {
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"` // 简单拼音
 
 	PctChg float64 `json:"percent" bson:"pct_chg"` // 涨跌幅
-	Amp    float64 `json:"amplitude" bson:"amp"`   // 振幅
+	Amp    float64 `json:"amplitude"`   // 振幅
 	Tr     float64 `json:"turnover_rate"`          // 换手率
 	Vr     float64 `json:"volume_ratio"`           // 量比
 
@@ -164,7 +175,11 @@ func (s *Stock) CalData(m *Market) {
 		s.Id = fmt.Sprintf("%s.%s", s.Id[2:], s.Id[0:2])
 
 	case util.MARKET_HK:
-		s.Id += ".HK"
+		if s.Id[0:2] == "HK" {
+			s.Id = fmt.Sprintf("%s.%s", s.Id[2:], s.Id[0:2])
+		} else {
+			s.Id += ".HK"
+		}
 
 	case util.MARKET_US:
 		s.Id += ".US"
@@ -172,9 +187,6 @@ func (s *Stock) CalData(m *Market) {
 
 	if s.Vol > 0 {
 		s.Avg = s.Amount / float64(s.Vol)
-		if m.MarketType == util.MARKET_CN {
-			s.Avg /= 100
-		}
 	}
 }
 

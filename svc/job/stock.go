@@ -20,7 +20,7 @@ var (
 
 	Markets = []*model.Market{
 		{MarketType: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz", Size: 5000},
-		{MarketType: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk", Size: 3000},
+		{MarketType: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk", Size: 2500},
 		{MarketType: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us", Size: 5000},
 	}
 
@@ -60,7 +60,7 @@ func GetTradeTime(code string) time.Time {
 }
 
 func getRealStock(m *model.Market) {
-	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=%d&order_by=percent&type=%s", m.Size, m.StrType)
+	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=%d&order_by=amount&type=%s", m.Size, m.StrType)
 
 	for {
 		freq := m.Freq()
@@ -146,7 +146,8 @@ func updateMinute(s []model.Stock, m *model.Market) {
 		if i.Price > 0 {
 			bulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg, "minutes": newTime.Minute()},
+				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg,
+					"main_net": i.MainNet, "minutes": newTime.Minute()},
 			)
 		}
 	}

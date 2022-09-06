@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/go-gota/gota/dataframe"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -141,30 +140,30 @@ func getMainFlow() {
 }
 
 func getMarketStatus() {
-	body, _ := util.GetAndRead("https://xueqiu.com/service/v5/stock/batch/quote?symbol=SH000001,HKHSI,.IXIC")
+	codes := "SH000001,SZ399001,SZ399006,SH000688,HKHSI,HKHSCCI,HKHSCEI,.DJI,.IXIC,.INX,ICS30"
+	body, _ := util.GetAndRead("https://xueqiu.com/service/v5/stock/batch/quote?symbol=" + codes)
 
-	items, _ := sonic.Get(body, "data", "items")
-	for i := 0; i < 3; i++ {
-		item := items.Index(i)
+	var indexes []model.Index
+	util.UnmarshalJSON(body, &indexes, "data", "items")
 
-		name, _ := item.Get("market").Get("region").String()
+	bulk := db.Stock.Bulk()
 
+	for _, i := range indexes {
 		for _, p := range Markets {
-			if p.StrMarket == name {
-				p.StatusName, _ = item.Get("market").Get("status").String()
+			if p.StrMarket == i.Market.Region {
+				i.Stock.CalData(p)
+				// status
+				p.StatusName = i.Market.StatusName
 				p.Status = p.StatusName == "交易中" || p.StatusName == "集合竞价"
 
-				timeZone, _ := item.Get("market").Get("time_zone").String()
-				cst, _ := time.LoadLocation(timeZone)
-
-				ts, _ := item.Get("quote").Get("timestamp").Int64()
-				p.TradeTime = time.Unix(ts/1000, 0).In(cst)
-
-				// valid
-				if p.TradeTime.IsZero() {
-					panic("trade_time is zero")
-				}
+				// tradeTime
+				cst, _ := time.LoadLocation(i.Market.TimeZone)
+				p.TradeTime = time.Unix(i.Stock.Time/1000, 0).In(cst)
 			}
 		}
+
+		bulk.InsertOne(i.Stock)
+		bulk.UpdateId(i.Stock.Id, i)
 	}
+	bulk.Run(ctx)
 }
