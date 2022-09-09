@@ -34,7 +34,7 @@ func ConnectCList(c *gin.Context) {
 		db.User.Aggregate(ctx, mongox.Pipeline().
 			Match(bson.M{"_id": uid}).
 			Lookup("stock", "groups.list", "_id", "stocks").
-			Project(bson.M{"groups": 1, "stocks": listOpt}).Do()).
+			Project(bson.M{"groups": 1, "stocks": 1}).Do()).
 			One(&data)
 
 		AddChart(req.Chart, data.Stocks)

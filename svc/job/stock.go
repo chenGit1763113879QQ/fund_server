@@ -19,9 +19,9 @@ var (
 	ctx = context.Background()
 
 	Markets = []*model.Market{
-		{MarketType: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz", Size: 5000},
-		{MarketType: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk", Size: 2500},
-		{MarketType: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us", Size: 5000},
+		{Market: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz", Size: 5000},
+		{Market: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk", Size: 2500},
+		{Market: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us", Size: 5000},
 	}
 
 	Cond = sync.NewCond(&sync.Mutex{})
@@ -100,21 +100,18 @@ func getRealStock(m *model.Market) {
 		cache.Stock.Stores(keys, data)
 
 		bulk.Run(ctx)
-
 		updateMinute(data, m)
 
-		if m.Type == util.TYPE_STOCK && freq >= 1 {
-			// go getDistribution(m.Name)
+		if freq >= 1 {
+			go getDistribution(m.Market)
 
-			if m.MarketType == util.MARKET_CN {
+			if m.Market == util.MARKET_CN {
 				go getIndustry(m)
 				go getMainFlow()
 				go getNorthMoney()
 			}
 		}
-		if m.Type == util.TYPE_STOCK {
-			Cond.Broadcast()
-		}
+		Cond.Broadcast()
 		m.Incr()
 
 		for !m.Status {

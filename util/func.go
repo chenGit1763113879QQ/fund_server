@@ -23,9 +23,7 @@ const (
 	TYPE_STOCK
 	TYPE_INDEX
 	TYPE_FUND
-	TYPE_I1
-	TYPE_I2
-	TYPE_C
+	TYPE_IDS
 )
 
 // In slice
@@ -97,7 +95,7 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 		Msg string `json:"msg"`
 	}
 
-	if err = sonic.Unmarshal(body, &data); err != nil {
+	if err = UnmarshalJSON(body, &data); err != nil {
 		return err
 	}
 	if data.Msg != "" {
@@ -145,11 +143,11 @@ func IsChinese(str string) bool {
 func UnmarshalJSON(body []byte, data any, path ...interface{}) error {
 	node, err := sonic.Get(body, path...)
 	if err != nil {
-		log.Warn().Msg(err.Error())
+		log.Warn().Msgf("unmarshal err: %s", err.Error())
 	}
 	raw, err := node.Raw()
 	if err != nil {
-		log.Warn().Msg(err.Error())
+		log.Warn().Msgf("unmarshal err: %s", err.Error())
 	}
 	return sonic.UnmarshalString(raw, &data)
 }

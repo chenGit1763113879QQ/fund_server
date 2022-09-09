@@ -12,9 +12,9 @@ import (
 var pinyinArg = pinyin.NewArgs()
 
 type Market struct {
-	MarketType uint8
-	Type       uint8
-	count      uint8
+	Market uint8
+	Type   uint8
+	count  uint8
 
 	Status bool
 	Size   uint
@@ -84,7 +84,7 @@ type Stock struct {
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"` // 简单拼音
 
 	PctChg float64 `json:"percent" bson:"pct_chg"` // 涨跌幅
-	Amp    float64 `json:"amplitude"`   // 振幅
+	Amp    float64 `json:"amplitude"`              // 振幅
 	Tr     float64 `json:"turnover_rate"`          // 换手率
 	Vr     float64 `json:"volume_ratio"`           // 量比
 
@@ -134,9 +134,6 @@ type Industry struct {
 	PctYear float32 `bson:"pct_year"`
 
 	Price   float64 `bson:"price,omitempty"`
-	High    float64 `bson:"high,omitempty"`
-	Low     float64 `bson:"low,omitempty"`
-	Open    float64 `bson:"open,omitempty"`
 	Close   float64 `bson:"close,omitempty"`
 	Amount  float64 `bson:"amount,omitempty"`
 	Mc      float64 `bson:"mc,omitempty"`
@@ -157,7 +154,7 @@ type Stk struct {
 
 func (s *Stock) CalData(m *Market) {
 	if m.Freq() == 2 {
-		s.MarketType = m.MarketType
+		s.MarketType = m.Market
 		s.Type = m.Type
 
 		// add pinyin
@@ -170,16 +167,15 @@ func (s *Stock) CalData(m *Market) {
 	}
 
 	// format code
-	switch m.MarketType {
+	switch m.Market {
 	case util.MARKET_CN:
 		s.Id = fmt.Sprintf("%s.%s", s.Id[2:], s.Id[0:2])
 
 	case util.MARKET_HK:
 		if s.Id[0:2] == "HK" {
-			s.Id = fmt.Sprintf("%s.%s", s.Id[2:], s.Id[0:2])
-		} else {
-			s.Id += ".HK"
+			s.Id = s.Id[2:]
 		}
+		s.Id += ".HK"
 
 	case util.MARKET_US:
 		s.Id += ".US"

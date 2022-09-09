@@ -21,21 +21,16 @@ import (
 
 const (
 	pageSize = 20
-	EMHOST   = "http://push2.eastmoney.com/api/qt/stock" // eastmoney host
 )
 
 var (
 	ctx     = context.Background()
-	listOpt = bson.M{
-		"_id": 1, "cid": 1, "type": 1, "marketType": 1, "price": 1, "pct_chg": 1, "vol": 1, "amount": 1,
-		"main_net": 1, "name": 1, "net": 1, "basic_eps": 1, "roe": 1, "tr": 1, "pct_rate": 1,
-		"mc": 1, "netprofit_yoy": 1, "or_yoy": 1, "ratio": 1, "pe_ttm": 1, "pct_year": 1,
-	}
+	listOpt = bson.M{"pinyin": 0, "lazy_pinyin": 0, "members": 0}
 )
 
 func GetStockDetail(code string) bson.M {
 	var data bson.M
-	db.Stock.Find(ctx, bson.M{"_id": code}).Select(bson.M{"members": 0, "company": 0}).One(&data)
+	db.Stock.Find(ctx, bson.M{"_id": code}).Select(bson.M{"members": 0, "pinyin": 0}).One(&data)
 
 	if data != nil {
 		var bk []bson.M
@@ -43,14 +38,14 @@ func GetStockDetail(code string) bson.M {
 			Select(bson.M{"name": 1, "type": 1, "pct_chg": 1}).All(&bk)
 		data["bk"] = bk
 
-		// for _, i := range job.Markets {
-		// 	if i.Name == data["marketType"] {
-		// 		data["status"] = i.Status
-		// 		data["status_name"] = i.StatusName
-		// 		data["trade_date"] = i.TradeTime
-		// 		break
-		// 	}
-		// }
+		for _, i := range job.Markets {
+			if i.Market == data["marketType"] {
+				data["status"] = i.Status
+				data["status_name"] = i.StatusName
+				data["trade_date"] = i.TradeTime
+				break
+			}
+		}
 	}
 	return data
 }
@@ -77,13 +72,16 @@ func getStockList(codeStr string, chart string) []bson.M {
 func GetStockList(c *gin.Context) {
 	var req struct {
 		Parent     string   `form:"parent"`
-		MarketType string   `form:"marketType" binding:"oneof=CN HK US,omitempty"`
+		MarketType uint8    `form:"marketType"`
 		Sort       string   `form:"sort"`
 		Chart      string   `form:"chart"`
-		Page       int64    `form:"page" binding:"min=1,omitempty"`
+		Page       int64    `form:"page"`
 		List       []string `form:"list" json:"list" bson:"list" binding:"unique,omitempty"`
 	}
-	c.ShouldBind(req)
+	if err := c.ShouldBind(&req); err != nil {
+		midware.Error(c, err)
+		return
+	}
 
 	var query qmgo.QueryI
 
@@ -95,9 +93,9 @@ func GetStockList(c *gin.Context) {
 		db.Stock.Find(ctx, bson.M{"_id": req.Parent}).Distinct("members", &member)
 		query = db.Stock.Find(ctx, bson.M{"_id": bson.M{"$in": member}})
 
-	} else if req.MarketType != "" {
+	} else if req.MarketType > 0 {
 		query = db.Stock.Find(ctx, bson.M{
-			"marketType": req.MarketType, "type": "stock", "price": bson.M{"$gt": 0},
+			"marketType": req.MarketType, "type": util.TYPE_STOCK,
 		})
 
 	} else {
@@ -107,10 +105,10 @@ func GetStockList(c *gin.Context) {
 
 	data := make([]bson.M, 0)
 	if req.Sort != "" {
-		query = query.Sort(req.Sort)
+		query.Sort(req.Sort)
 	}
 	if req.Page > 0 {
-		query = query.Skip(pageSize * (req.Page - 1))
+		query.Skip(pageSize * (req.Page - 1))
 	}
 
 	query.Limit(pageSize).Select(listOpt).All(&data)
@@ -170,16 +168,12 @@ func GetActiveList(c *gin.Context) {
 
 func GetMinute(code string) any {
 	var data []struct {
-		Price float64 `json:"price"`
-		Avg   float64 `json:"avg"`
-		Net   float64 `json:"net"`
-		Huge  float64 `json:"huge"`
-		Big   float64 `json:"big"`
-		Mid   float64 `json:"mid"`
-		Small float64 `json:"small"`
-		Time  int64   `json:"time"`
-		Vol   int64   `json:"vol"`
-		Id    struct {
+		Price   float64 `json:"price"`
+		Avg     float64 `json:"avg"`
+		MainNet float64 `json:"main_net"`
+		Time    int64   `json:"time"`
+		Vol     int64   `json:"vol"`
+		Id      struct {
 			Time int64
 		} `json:"-" bson:"_id"`
 	}
@@ -216,7 +210,7 @@ func AddChart(chart string, items []bson.M) {
 			item["chart"] = bson.M{"total": 60, "value": price, "type": "line"}
 		}
 
-	case "price", "net", "main_net":
+	case "price", "main_net":
 		// simple chart
 		f = func(item bson.M, arg string) {
 			var data []struct {
@@ -373,7 +367,7 @@ func DetailBK(c *gin.Context) {
 func DetailBKGlobal(c *gin.Context) {
 	var data []bson.M
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"type": "I1"}).
+		Match(bson.M{"marketType": util.MARKET_CN, "type": util.TYPE_IDS}).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
 			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "count": 1,

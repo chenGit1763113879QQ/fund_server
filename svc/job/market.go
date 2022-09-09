@@ -21,23 +21,19 @@ func getIndustry(m *model.Market) {
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
 			"c":          bson.M{"name": 1, "pct_chg": 1, "main_net": 1},
-			"marketType": util.MARKET_CN,
+			"marketType": "$marketType",
 			"type":       "$type",
-			"high":       "$high",
-			"low":        "$low",
 			"close":      1,
 			"pct_chg":    bson.M{"$avg": "$c.pct_chg"},
-
-			"main_net": bson.M{"$sum": "$c.main_net"},
-
-			"vol":      bson.M{"$sum": "$c.vol"},
-			"tr":       bson.M{"$avg": "$c.tr"},
-			"amount":   bson.M{"$sum": "$c.amount"},
-			"mc":       bson.M{"$sum": "$c.mc"},
-			"fmc":      bson.M{"$sum": "$c.fmc"},
-			"pe_ttm":   bson.M{"$avg": "$c.pe_ttm"},
-			"pb":       bson.M{"$avg": "$c.pb"},
-			"pct_year": bson.M{"$avg": "$c.pct_year"},
+			"main_net":   bson.M{"$sum": "$c.main_net"},
+			"vol":        bson.M{"$sum": "$c.vol"},
+			"tr":         bson.M{"$avg": "$c.tr"},
+			"amount":     bson.M{"$sum": "$c.amount"},
+			"mc":         bson.M{"$sum": "$c.mc"},
+			"fmc":        bson.M{"$sum": "$c.fmc"},
+			"pe_ttm":     bson.M{"$avg": "$c.pe_ttm"},
+			"pb":         bson.M{"$avg": "$c.pb"},
+			"pct_year":   bson.M{"$avg": "$c.pct_year"},
 		}).Do()).All(&data)
 
 	bulk := db.Stock.Bulk()
@@ -66,12 +62,6 @@ func getIndustry(m *model.Market) {
 
 		// price
 		i.Price = i.Close * (1 + float64(i.PctChg)/100)
-		if i.Price > i.High {
-			i.High = i.Price
-		}
-		if i.Price < i.Low {
-			i.Low = i.Price
-		}
 		bulk.UpdateId(i.Id, bson.M{"$set": i})
 
 		// minute data
@@ -146,8 +136,6 @@ func getMarketStatus() {
 	var indexes []model.Index
 	util.UnmarshalJSON(body, &indexes, "data", "items")
 
-	bulk := db.Stock.Bulk()
-
 	for _, i := range indexes {
 		for _, p := range Markets {
 			if p.StrMarket == i.Market.Region {
@@ -159,11 +147,14 @@ func getMarketStatus() {
 				// tradeTime
 				cst, _ := time.LoadLocation(i.Market.TimeZone)
 				p.TradeTime = time.Unix(i.Stock.Time/1000, 0).In(cst)
+
+				i.Stock.MarketType = p.Market
+				i.Stock.Type = util.TYPE_INDEX
+
+				db.Stock.InsertOne(ctx, i.Stock)
+				db.Stock.UpdateId(ctx, i.Stock.Id, i)
+				break
 			}
 		}
-
-		bulk.InsertOne(i.Stock)
-		bulk.UpdateId(i.Stock.Id, i)
 	}
-	bulk.Run(ctx)
 }
