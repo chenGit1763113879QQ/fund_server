@@ -22,7 +22,6 @@ func init() {
 }
 
 func getCategoryIndustries(market string) {
-	// industries
 	var industries []struct {
 		IndCode    string `json:"encode" bson:"_id"`
 		MarketType uint8  `bson:"marketType"`
@@ -30,17 +29,18 @@ func getCategoryIndustries(market string) {
 		Name       string `json:"name"`
 	}
 
+	// industries
 	url := fmt.Sprintf("%s/industries?category=%s", XUEQIU, market)
 	body, _ := util.GetAndRead(url)
 
 	util.UnmarshalJSON(body, &industries, "data", "industries")
 
-	// stock
 	var stock []struct {
 		Code    string `json:"symbol"`
 		IndCode string `json:"indcode"`
 	}
 
+	// stocks
 	url = fmt.Sprintf("%s/screen?category=%s&areacode=&indcode=&size=6000&only_count=0", XUEQIU, market)
 	body, _ = util.GetAndRead(url)
 
@@ -49,7 +49,17 @@ func getCategoryIndustries(market string) {
 	// save
 	bulk := db.Stock.Bulk()
 
+	var prefix string
+
 	for _, ids := range industries {
+		// type
+		if ids.IndCode[0:3] != prefix {
+			ids.Type = util.TYPE_I1
+			prefix = ids.IndCode[0:3]
+		} else {
+			ids.Type = util.TYPE_I2
+		}
+
 		for _, stk := range stock {
 			if ids.IndCode == stk.IndCode {
 
@@ -66,7 +76,6 @@ func getCategoryIndustries(market string) {
 					ids.MarketType = util.MARKET_US
 					stk.Code += ".US"
 				}
-				ids.Type = util.TYPE_IDS
 
 				db.Stock.InsertOne(ctx, ids)
 

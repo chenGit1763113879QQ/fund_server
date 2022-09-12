@@ -19,9 +19,9 @@ var (
 	ctx = context.Background()
 
 	Markets = []*model.Market{
-		{Market: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz", Size: 5000},
-		{Market: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk", Size: 2500},
-		{Market: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us", Size: 5000},
+		{Market: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz"},
+		{Market: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk"},
+		{Market: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us"},
 	}
 
 	Cond = sync.NewCond(&sync.Mutex{})
@@ -51,16 +51,16 @@ func GetTradeTime(code string) time.Time {
 		case "SH", "SZ", "BJ", "TI":
 			return Markets[0].TradeTime
 		case "HK":
-			return Markets[3].TradeTime
+			return Markets[1].TradeTime
 		case "US":
-			return Markets[5].TradeTime
+			return Markets[2].TradeTime
 		}
 	}
 	return time.Unix(0, 0)
 }
 
 func getRealStock(m *model.Market) {
-	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=%d&order_by=amount&type=%s", m.Size, m.StrType)
+	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=5000&order_by=amount&type=%s", m.StrType)
 
 	for {
 		freq := m.Freq()

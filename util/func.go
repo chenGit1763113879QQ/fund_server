@@ -23,7 +23,8 @@ const (
 	TYPE_STOCK
 	TYPE_INDEX
 	TYPE_FUND
-	TYPE_IDS
+	TYPE_I1
+	TYPE_I2
 )
 
 // In slice
@@ -49,12 +50,14 @@ func Exp[T string | int | float64](isTrue bool, yes T, no T) T {
 func GetAndRead(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
+		log.Error().Msg(err.Error())
 		return nil, err
 	}
 	defer res.Body.Close()
 
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
+		log.Error().Msg(err.Error())
 		return nil, err
 	}
 	return body, nil

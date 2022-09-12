@@ -23,7 +23,6 @@ func getIndustry(m *model.Market) {
 			"c":          bson.M{"name": 1, "pct_chg": 1, "main_net": 1},
 			"marketType": "$marketType",
 			"type":       "$type",
-			"close":      1,
 			"pct_chg":    bson.M{"$avg": "$c.pct_chg"},
 			"main_net":   bson.M{"$sum": "$c.main_net"},
 			"vol":        bson.M{"$sum": "$c.vol"},
@@ -60,15 +59,13 @@ func getIndustry(m *model.Market) {
 		}
 		i.ConnList = nil
 
-		// price
-		i.Price = i.Close * (1 + float64(i.PctChg)/100)
 		bulk.UpdateId(i.Id, bson.M{"$set": i})
 
 		// minute data
 		if m.Status {
 			minBulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "minutes": newTime.Minute()},
+				bson.M{"pct_chg": i.PctChg, "vol": i.Vol, "main_net": i.MainNet, "minutes": newTime.Minute()},
 			)
 		}
 	}

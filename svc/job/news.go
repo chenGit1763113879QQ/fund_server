@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -41,7 +42,8 @@ func getNews() {
 	for {
 		err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news)
 		if err != nil {
-			goto SLEEP
+			log.Error().Msg(err.Error())
+			continue
 		}
 		for _, n := range news {
 			// 去除【行情】类资讯
@@ -65,8 +67,5 @@ func getNews() {
 				Tag:      codes,
 			})
 		}
-
-		SLEEP:
-		time.Sleep(time.Minute)
 	}
 }

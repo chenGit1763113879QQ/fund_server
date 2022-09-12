@@ -76,12 +76,9 @@ func GetStockList(c *gin.Context) {
 		Sort       string   `form:"sort"`
 		Chart      string   `form:"chart"`
 		Page       int64    `form:"page"`
-		List       []string `form:"list" json:"list" bson:"list" binding:"unique,omitempty"`
+		List       []string `form:"list" json:"list" bson:"list"`
 	}
-	if err := c.ShouldBind(&req); err != nil {
-		midware.Error(c, err)
-		return
-	}
+	c.ShouldBind(&req)
 
 	var query qmgo.QueryI
 
@@ -359,7 +356,7 @@ func GetAllStock(c *gin.Context) {
 func DetailBK(c *gin.Context) {
 	var data []bson.M
 	db.Stock.Find(ctx, bson.M{"type": c.Query("type")}).Select(bson.M{
-		"name": 1, "pct_chg": 1, "amount": 1, "main_net": 1, "net": 1,
+		"name": 1, "pct_chg": 1, "amount": 1, "main_net": 1,
 	}).All(&data)
 	midware.Success(c, data)
 }
@@ -367,7 +364,7 @@ func DetailBK(c *gin.Context) {
 func DetailBKGlobal(c *gin.Context) {
 	var data []bson.M
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"marketType": util.MARKET_CN, "type": util.TYPE_IDS}).
+		Match(bson.M{"marketType": util.MARKET_CN, "type": util.TYPE_I1}).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
 			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "count": 1,

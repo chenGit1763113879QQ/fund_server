@@ -17,7 +17,6 @@ type Market struct {
 	count  uint8
 
 	Status bool
-	Size   uint
 
 	StrMarket string
 	StrType   string
@@ -128,13 +127,11 @@ type Industry struct {
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"`
 
 	PctChg  float32 `bson:"pct_chg"`
-	Pb      float32 `bson:"pb,omitempty"`
-	PeTtm   float32 `bson:"pe_ttm,omitempty"`
+	Pb      float32 `bson:"pb"`
+	PeTtm   float32 `bson:"pe_ttm"`
 	Tr      float32 `bson:"tr,omitempty"`
 	PctYear float32 `bson:"pct_year"`
 
-	Price   float64 `bson:"price,omitempty"`
-	Close   float64 `bson:"close,omitempty"`
 	Amount  float64 `bson:"amount,omitempty"`
 	Mc      float64 `bson:"mc,omitempty"`
 	Fmc     float64 `bson:"fmc,omitempty"`
