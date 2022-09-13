@@ -68,8 +68,8 @@ func (m *Market) FreqIsZero() bool {
 }
 
 type Stock struct {
-	MarketType uint8 `bson:"marketType,omitempty"` // 市场
-	Type       uint8 `bson:"type,omitempty"`       // 类型
+	MarketType uint8 `bson:"marketType"` // 市场
+	Type       uint8 `bson:"type"`       // 类型
 
 	Vol         uint  `json:"volume"`                                     // 成交量
 	Followers   int   `json:"followers"`                                  // 关注数
@@ -117,24 +117,24 @@ type Stock struct {
 }
 
 type Industry struct {
-	MarketType uint8 `bson:"marketType,omitempty"`
-	Type       uint8 `bson:"type,omitempty"`
-	Vol        uint  `bson:"vol,omitempty"`
+	MarketType uint8 `bson:"marketType"`
+	Type       uint8 `bson:"type"`
+	Vol        uint  `bson:"vol"`
 
 	Id         string `bson:"_id"`
 	Name       string `bson:"name,omitempty"`
 	Pinyin     string `bson:"pinyin,omitempty"`
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"`
 
-	PctChg  float32 `bson:"pct_chg"`
-	Pb      float32 `bson:"pb"`
-	PeTtm   float32 `bson:"pe_ttm"`
-	Tr      float32 `bson:"tr,omitempty"`
-	PctYear float32 `bson:"pct_year"`
+	PctChg  float64 `bson:"pct_chg"`
+	Pb      float64 `bson:"pb"`
+	PeTtm   float64 `bson:"pe_ttm"`
+	Tr      float64 `bson:"tr"`
+	PctYear float64 `bson:"pct_year"`
 
-	Amount  float64 `bson:"amount,omitempty"`
-	Mc      float64 `bson:"mc,omitempty"`
-	Fmc     float64 `bson:"fmc,omitempty"`
+	Amount  float64 `bson:"amount"`
+	Mc      float64 `bson:"mc"`
+	Fmc     float64 `bson:"fmc"`
 	MainNet float64 `bson:"main_net"`
 
 	ConnList      []Stk `bson:"c,omitempty"`
@@ -151,9 +151,6 @@ type Stk struct {
 
 func (s *Stock) CalData(m *Market) {
 	if m.Freq() == 2 {
-		s.MarketType = m.Market
-		s.Type = m.Type
-
 		// add pinyin
 		if util.IsChinese(s.Name) {
 			for _, c := range pinyin.LazyPinyin(s.Name, pinyinArg) {
@@ -162,6 +159,9 @@ func (s *Stock) CalData(m *Market) {
 			}
 		}
 	}
+
+	s.MarketType = m.Market
+	s.Type = m.Type
 
 	// format code
 	switch m.Market {

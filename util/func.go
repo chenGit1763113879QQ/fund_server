@@ -147,10 +147,12 @@ func UnmarshalJSON(body []byte, data any, path ...interface{}) error {
 	node, err := sonic.Get(body, path...)
 	if err != nil {
 		log.Warn().Msgf("unmarshal err: %s", err.Error())
+		return err
 	}
 	raw, err := node.Raw()
 	if err != nil {
 		log.Warn().Msgf("unmarshal err: %s", err.Error())
+		return err
 	}
 	return sonic.UnmarshalString(raw, &data)
 }

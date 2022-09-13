@@ -10,18 +10,24 @@ import (
 	"time"
 
 	"github.com/go-gota/gota/dataframe"
+	"github.com/mozillazg/go-pinyin"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+var pinyinArg = pinyin.NewArgs()
 
 func getIndustry(m *model.Market) {
 	var data []model.Industry
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"members": 1}).
+		Match(bson.M{"$or": bson.A{
+			bson.M{"type": util.TYPE_I1}, bson.M{"type": util.TYPE_I2},
+		}}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
 			"c":          bson.M{"name": 1, "pct_chg": 1, "main_net": 1},
 			"marketType": "$marketType",
+			"name":       "$name",
 			"type":       "$type",
 			"pct_chg":    bson.M{"$avg": "$c.pct_chg"},
 			"main_net":   bson.M{"$sum": "$c.main_net"},
@@ -59,13 +65,22 @@ func getIndustry(m *model.Market) {
 		}
 		i.ConnList = nil
 
+		// add pinyin
+		if util.IsChinese(i.Name) {
+			for _, c := range pinyin.LazyPinyin(i.Name, pinyinArg) {
+				i.Pinyin += c
+				i.LazyPinyin += string(c[0])
+			}
+		}
+
 		bulk.UpdateId(i.Id, bson.M{"$set": i})
 
 		// minute data
 		if m.Status {
 			minBulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"pct_chg": i.PctChg, "vol": i.Vol, "main_net": i.MainNet, "minutes": newTime.Minute()},
+				bson.M{"pct_chg": i.PctChg, "vol": i.Vol, "main_net": i.MainNet,
+					"minutes": newTime.Minute()},
 			)
 		}
 	}
@@ -73,15 +88,13 @@ func getIndustry(m *model.Market) {
 	minBulk.Run(ctx)
 }
 
-func getDistribution(market uint8) {
+func getDistribution(m *model.Market) {
 	var data []struct {
 		Count int64 `bson:"count"`
 	}
-	var cn uint8 = util.MARKET_CN
-	var stock uint8 = util.TYPE_STOCK
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"marketType": market, "type": stock, "price": bson.M{"$gt": 0}}).
+		Match(bson.M{"marketType": m.Market, "type": m.Type, "price": bson.M{"$gt": 0}}).
 		Bucket(
 			"$pct_chg",
 			bson.A{-99, -10, -7, -5, -3, -0.0001, 0.0001, 3, 5, 7, 10, 999},
@@ -95,13 +108,11 @@ func getDistribution(market uint8) {
 		nums[i] = data[i].Count
 	}
 
-	if market == cn {
-		nums[0], _ = db.Stock.Find(ctx, bson.M{"marketType": cn, "type": stock, "pct_chg": bson.M{"$lt": -9.8}}).Count()
+	if m.Market == util.MARKET_CN {
 		label[0] = "跌停"
-		nums[10], _ = db.Stock.Find(ctx, bson.M{"marketType": cn, "type": stock, "pct_chg": bson.M{"$gt": 9.8}}).Count()
 		label[10] = "涨停"
 	}
-	cache.Numbers.Store(market, bson.M{"label": label, "value": nums})
+	cache.Numbers.Store(m.Market, bson.M{"label": label, "value": nums})
 }
 
 func getNorthMoney() {

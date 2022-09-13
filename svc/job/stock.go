@@ -103,10 +103,10 @@ func getRealStock(m *model.Market) {
 		updateMinute(data, m)
 
 		if freq >= 1 {
-			go getDistribution(m.Market)
+			go getDistribution(m)
+			go getIndustry(m)
 
 			if m.Market == util.MARKET_CN {
-				go getIndustry(m)
 				go getMainFlow()
 				go getNorthMoney()
 			}
