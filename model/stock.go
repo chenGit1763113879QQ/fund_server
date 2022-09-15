@@ -117,12 +117,12 @@ type Stock struct {
 }
 
 type Industry struct {
-	MarketType uint8 `bson:"marketType"`
-	Type       uint8 `bson:"type"`
+	MarketType uint8 `bson:"marketType,omitempty"`
+	Type       uint8 `bson:"type,omitempty"`
 	Vol        uint  `bson:"vol"`
 
 	Id         string `bson:"_id"`
-	Name       string `bson:"name,omitempty"`
+	Name       string `bson:"name"`
 	Pinyin     string `bson:"pinyin,omitempty"`
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"`
 
@@ -137,16 +137,15 @@ type Industry struct {
 	Fmc     float64 `bson:"fmc"`
 	MainNet float64 `bson:"main_net"`
 
-	ConnList      []Stk `bson:"c,omitempty"`
-	PctLeader     Stk   `bson:"pct_leader"`
-	MainNetLeader Stk   `bson:"main_net_leader"`
+	ConnList  []Stk `bson:"c,omitempty"`
+	PctLeader Stk   `bson:"pct_leader"`
 }
 
 // 成分股
 type Stk struct {
-	Name    string  `bson:"name"`
-	PctChg  float64 `bson:"pct_chg"`
-	MainNet float64 `bson:"main_net"`
+	Code   string  `bson:"code"`
+	Name   string  `bson:"name"`
+	PctChg float64 `bson:"pct_chg"`
 }
 
 func (s *Stock) CalData(m *Market) {

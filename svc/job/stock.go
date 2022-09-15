@@ -86,9 +86,7 @@ func getRealStock(m *model.Market) {
 
 			if data[i].Price > 0 {
 				// update db
-				if freq >= 1 {
-					bulk.UpdateId(data[i].Id, bson.M{"$set": data[i]})
-				}
+				bulk.UpdateId(data[i].Id, bson.M{"$set": data[i]})
 
 				// insert db
 				if freq == 2 {

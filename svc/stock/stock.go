@@ -362,14 +362,20 @@ func DetailBK(c *gin.Context) {
 }
 
 func DetailBKGlobal(c *gin.Context) {
+	var req struct {
+		Market uint `form:"market"`
+	}
+	c.ShouldBind(&req)
+
 	var data []bson.M
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"marketType": util.MARKET_CN, "type": util.TYPE_I1}).
+		Match(bson.M{"marketType": req.Market, "type": util.TYPE_I1}).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
 			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "count": 1,
 			"children": bson.M{"_id": 1, "name": 1, "amount": 1, "pct_chg": 1, "mc": 1},
 		}).Do()).All(&data)
+
 	midware.Success(c, data)
 }
 

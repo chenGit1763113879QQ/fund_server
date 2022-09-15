@@ -24,7 +24,7 @@ func getNews() {
 
 	// wait
 	time.Sleep(time.Second * 5)
-	db.Stock.Find(ctx, bson.M{}).All(&stocks)
+	db.Stock.Find(ctx, bson.M{}).Select(bson.M{"_id": 1, "name": 1}).All(&stocks)
 
 	// 去除多余后缀
 	for i := range stocks {

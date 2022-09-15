@@ -20,25 +20,21 @@ func getIndustry(m *model.Market) {
 	var data []model.Industry
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"$or": bson.A{
-			bson.M{"type": util.TYPE_I1}, bson.M{"type": util.TYPE_I2},
-		}}).
+		Match(bson.M{"type": bson.M{"$in": []int{util.TYPE_I1, util.TYPE_I2}}}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
-			"c":          bson.M{"name": 1, "pct_chg": 1, "main_net": 1},
-			"marketType": "$marketType",
-			"name":       "$name",
-			"type":       "$type",
-			"pct_chg":    bson.M{"$avg": "$c.pct_chg"},
-			"main_net":   bson.M{"$sum": "$c.main_net"},
-			"vol":        bson.M{"$sum": "$c.vol"},
-			"tr":         bson.M{"$avg": "$c.tr"},
-			"amount":     bson.M{"$sum": "$c.amount"},
-			"mc":         bson.M{"$sum": "$c.mc"},
-			"fmc":        bson.M{"$sum": "$c.fmc"},
-			"pe_ttm":     bson.M{"$avg": "$c.pe_ttm"},
-			"pb":         bson.M{"$avg": "$c.pb"},
-			"pct_year":   bson.M{"$avg": "$c.pct_year"},
+			"c":        bson.M{"name": 1, "pct_chg": 1},
+			"name":     "$name",
+			"pct_chg":  bson.M{"$avg": "$c.pct_chg"},
+			"main_net": bson.M{"$sum": "$c.main_net"},
+			"vol":      bson.M{"$sum": "$c.vol"},
+			"tr":       bson.M{"$avg": "$c.tr"},
+			"amount":   bson.M{"$sum": "$c.amount"},
+			"mc":       bson.M{"$sum": "$c.mc"},
+			"fmc":      bson.M{"$sum": "$c.fmc"},
+			"pe_ttm":   bson.M{"$avg": "$c.pe_ttm"},
+			"pb":       bson.M{"$avg": "$c.pb"},
+			"pct_year": bson.M{"$avg": "$c.pct_year"},
 		}).Do()).All(&data)
 
 	bulk := db.Stock.Bulk()
@@ -51,25 +47,23 @@ func getIndustry(m *model.Market) {
 	minBulk := db.MinuteDB.Collection(date).Bulk()
 
 	for _, i := range data {
-		i.PctLeader.PctChg = -100
-		i.MainNetLeader.MainNet = -999999
+		i.PctLeader.PctChg = -101
 
 		// leader stock
 		for _, stk := range i.ConnList {
 			if stk.PctChg > i.PctLeader.PctChg {
 				i.PctLeader = stk
 			}
-			if stk.MainNet > i.MainNetLeader.MainNet {
-				i.MainNetLeader = stk
-			}
 		}
 		i.ConnList = nil
 
-		// add pinyin
-		if util.IsChinese(i.Name) {
-			for _, c := range pinyin.LazyPinyin(i.Name, pinyinArg) {
-				i.Pinyin += c
-				i.LazyPinyin += string(c[0])
+		if m.Freq() == 2 {
+			// add pinyin
+			if util.IsChinese(i.Name) {
+				for _, c := range pinyin.LazyPinyin(i.Name, pinyinArg) {
+					i.Pinyin += c
+					i.LazyPinyin += string(c[0])
+				}
 			}
 		}
 
@@ -79,8 +73,7 @@ func getIndustry(m *model.Market) {
 		if m.Status {
 			minBulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"pct_chg": i.PctChg, "vol": i.Vol, "main_net": i.MainNet,
-					"minutes": newTime.Minute()},
+				bson.M{"pct_chg": i.PctChg, "vol": i.Vol, "main_net": i.MainNet, "minutes": newTime.Minute()},
 			)
 		}
 	}

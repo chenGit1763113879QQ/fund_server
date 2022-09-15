@@ -15,8 +15,6 @@ MARKET_US = 3
 
 TYPE_STOCK = 4
 TYPE_INDEX = 5
-TYPEE_FUND = 6
-TYPE_IDS = 7
 
 class DailyInfo:
     def __init__(self):

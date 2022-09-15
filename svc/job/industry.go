@@ -14,36 +14,37 @@ const XUEQIU = "https://xueqiu.com/service/screener"
 
 func init() {
 	go func() {
-		time.Sleep(time.Second * 5)
-		for _, p := range Markets {
-			getCategoryIndustries(p.StrMarket)
+		for {
+			time.Sleep(time.Second * 5)
+			for _, p := range Markets {
+				getCategoryIndustries(p.StrMarket)
+			}
+			time.Sleep(time.Hour)
 		}
 	}()
 }
 
 func getCategoryIndustries(market string) {
+	// industries
+	url := fmt.Sprintf("%s/industries?category=%s", XUEQIU, market)
+	body, _ := util.GetAndRead(url)
+
 	var industries []struct {
 		IndCode    string `json:"encode" bson:"_id"`
 		MarketType uint8  `bson:"marketType"`
 		Type       uint8  `bson:"type"`
 		Name       string `json:"name"`
 	}
-
-	// industries
-	url := fmt.Sprintf("%s/industries?category=%s", XUEQIU, market)
-	body, _ := util.GetAndRead(url)
-
 	util.UnmarshalJSON(body, &industries, "data", "industries")
-
-	var stock []struct {
-		Code    string `json:"symbol"`
-		IndCode string `json:"indcode"`
-	}
 
 	// stocks
 	url = fmt.Sprintf("%s/screen?category=%s&areacode=&indcode=&size=6000&only_count=0", XUEQIU, market)
 	body, _ = util.GetAndRead(url)
 
+	var stock []struct {
+		Code    string `json:"symbol"`
+		IndCode string `json:"indcode"`
+	}
 	util.UnmarshalJSON(body, &stock, "data", "list")
 
 	// save
@@ -79,12 +80,14 @@ func getCategoryIndustries(market string) {
 
 				db.Stock.InsertOne(ctx, ids)
 
+				// industry
 				bulk.UpdateId(ids.IndCode, bson.M{
 					"$set": bson.M{
 						"name": ids.Name, "marketType": ids.MarketType, "type": ids.Type,
 					},
 					"$addToSet": bson.M{"members": stk.Code},
 				})
+				// member
 				bulk.UpdateId(stk.Code, bson.M{"$addToSet": bson.M{"bk": ids.IndCode}})
 			}
 		}
