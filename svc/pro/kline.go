@@ -2,12 +2,10 @@ package pro
 
 import (
 	"context"
-	"fund/cache"
 	"fund/db"
 	"fund/model"
 	"fund/util"
 	"fund/util/mongox"
-	"math"
 	"sync"
 	"time"
 
@@ -51,21 +49,19 @@ func initKline() {
 
 	t, _ := time.Parse("2006/01/02", "2017/01/01")
 
-	cache.Stock.RangeForCNStock(func(k string, v model.Stock) {
-		// filter
-		if v.Mc > 50*math.Pow(10, 8) {
-			p.NewTask(func() {
-				var data []model.Kline
-				// get kline
-				db.KlineDB.Collection(util.Md5Code(k)).Aggregate(ctx, mongox.Pipeline().
-					Match(bson.M{"code": k, "time": bson.M{"$gt": t}}).
-					Sort(bson.M{"time": 1}).Do()).All(&data)
-				if data != nil {
-					klineMap.Store(k, data)
-				}
-			})
-		}
-	})
+	for _, id := range getCNStocks() {
+		p.NewTask(func() {
+			var data []model.Kline
+			// get kline
+			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
+				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
+				Sort(bson.M{"time": 1}).Do()).All(&data)
+			if data != nil {
+				klineMap.Store(id, data)
+			}
+		})
+	}
+
 	p.Wait()
 	log.Debug().Msgf("init kline success, length:%d", len(klineMap.data))
 }

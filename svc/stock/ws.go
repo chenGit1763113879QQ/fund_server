@@ -2,7 +2,6 @@ package stock
 
 import (
 	"errors"
-	"fund/cache"
 	"fund/db"
 	"fund/midware"
 	"fund/model"
@@ -54,9 +53,9 @@ func ConnectCList(c *gin.Context) {
 		}
 	}()
 
-	cache.Stock.Watch(c.Request.Context(), func(i any) {
-		ws.WriteBson(i)
-	}, req.List)
+	// cache.Stock.Watch(c.Request.Context(), func(i any) {
+	// 	ws.WriteBson(i)
+	// }, req.List)
 }
 
 // 股票详情
@@ -89,7 +88,7 @@ func ConnectItems(c *gin.Context) {
 	for ws.Err == nil {
 		job.Cond.Wait()
 
-		i := cache.Stock.Load(code)
+		i := model.Stock{}
 
 		if i.Vol != items["vol"] {
 			ws.WriteBson(bson.M{"items": i})
@@ -126,9 +125,9 @@ func ConnectMarket(c *gin.Context) {
 
 	// 市场总览
 	jobMarket := func() {
-		temp, _ := cache.Numbers.Load(req.MarketType)
+		temp, _ := db.Numbers.Load(req.MarketType)
 		ws.WriteJson(bson.M{"market": bson.M{
-			"0": temp, "1": cache.NorthMoney, "2": cache.MainFlow, "3": cache.MarketHot,
+			"0": temp, "1": db.NorthMoney, "2": db.MainFlow, "3": db.MarketHot,
 		}})
 	}
 

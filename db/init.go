@@ -2,9 +2,11 @@ package db
 
 import (
 	"context"
+	"sync"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/qiniu/qmgo"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 // 生产环境
@@ -35,6 +37,14 @@ var (
 
 	User    *qmgo.Collection
 	Article *qmgo.Collection
+)
+
+// cache
+var (
+	Numbers    sync.Map
+	MainFlow   any
+	NorthMoney any
+	MarketHot  []bson.M
 )
 
 // init database

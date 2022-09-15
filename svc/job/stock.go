@@ -3,7 +3,6 @@ package job
 import (
 	"context"
 	"fmt"
-	"fund/cache"
 	"fund/db"
 	"fund/model"
 	"fund/util"
@@ -78,11 +77,9 @@ func getRealStock(m *model.Market) {
 		util.UnmarshalJSON(body, &data, "data", "list")
 
 		bulk := db.Stock.Bulk()
-		keys := make([]string, len(data))
 
 		for i := range data {
 			data[i].CalData(m)
-			keys[i] = data[i].Id
 
 			if data[i].Price > 0 {
 				// update db
@@ -94,8 +91,6 @@ func getRealStock(m *model.Market) {
 				}
 			}
 		}
-		// update cache
-		cache.Stock.Stores(keys, data)
 
 		bulk.Run(ctx)
 		updateMinute(data, m)
@@ -147,4 +142,10 @@ func updateMinute(s []model.Stock, m *model.Market) {
 		}
 	}
 	go bulk.Run(ctx)
+}
+
+func GetKline(symbol string) {
+	url := "https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=SH600519&begin=0&period=day&count=9999&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci&type=before"
+	body, _ := util.GetAndRead(url)
+	fmt.Println(body)
 }

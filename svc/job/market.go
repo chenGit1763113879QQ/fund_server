@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fund/cache"
 	"fund/db"
 	"fund/model"
 	"fund/util"
@@ -105,7 +104,7 @@ func getDistribution(m *model.Market) {
 		label[0] = "跌停"
 		label[10] = "涨停"
 	}
-	cache.Numbers.Store(m.Market, bson.M{"label": label, "value": nums})
+	db.Numbers.Store(m.Market, bson.M{"label": label, "value": nums})
 }
 
 func getNorthMoney() {
@@ -116,7 +115,7 @@ func getNorthMoney() {
 	util.UnmarshalJSON(body, &data, "data", "s2n")
 
 	df := dataframe.ReadCSV(strings.NewReader("time,hgt,sgt\n" + strings.Join(data, "\n")))
-	cache.NorthMoney = df.Maps()
+	db.NorthMoney = df.Maps()
 }
 
 func getMainFlow() {
@@ -127,7 +126,7 @@ func getMainFlow() {
 	util.UnmarshalJSON(body, &data, "data", "klines")
 
 	df := dataframe.ReadCSV(strings.NewReader("time,value\n" + strings.Join(data, "\n")))
-	cache.MainFlow = df.Maps()
+	db.MainFlow = df.Maps()
 }
 
 func getMarketStatus() {

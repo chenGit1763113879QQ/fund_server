@@ -1,7 +1,6 @@
 package pro
 
 import (
-	"fund/cache"
 	"fund/db"
 	"fund/model"
 	"time"
@@ -30,10 +29,10 @@ func closeHist(k []model.Kline) []float64 {
 func PredictStock() {
 	db.Predict.DropCollection(ctx)
 
-	cache.Stock.RangeForCNStock(func(k string, _ model.Stock) {
+	for _, k := range getCNStocks() {
 		predict(k, 30)
 		predict(k, 60)
-	})
+	}
 	log.Debug().Msg("predict kline finished")
 }
 
