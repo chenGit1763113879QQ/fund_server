@@ -67,5 +67,6 @@ func getNews() {
 				Tag:      codes,
 			})
 		}
+		time.Sleep(time.Minute)
 	}
 }

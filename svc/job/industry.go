@@ -13,15 +13,12 @@ import (
 const XUEQIU = "https://xueqiu.com/service/screener"
 
 func init() {
-	go func() {
-		for {
-			time.Sleep(time.Second * 5)
-			for _, p := range Markets {
-				getCategoryIndustries(p.StrMarket)
-			}
-			time.Sleep(time.Hour)
+	util.GoJob(func() {
+		time.Sleep(time.Second * 5)
+		for _, p := range Markets {
+			getCategoryIndustries(p.StrMarket)
 		}
-	}()
+	}, time.Hour)
 }
 
 func getCategoryIndustries(market string) {

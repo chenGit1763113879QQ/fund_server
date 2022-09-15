@@ -14,6 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+const XQHOST = "https://xueqiu.com/service/v5/stock"
+
 var (
 	ctx = context.Background()
 
@@ -35,12 +37,7 @@ func init() {
 	}
 	go getNews()
 
-	go func() {
-		for {
-			getMarketStatus()
-			time.Sleep(time.Second)
-		}
-	}()
+	util.GoJob(getMarketStatus, time.Second)
 }
 
 func GetTradeTime(code string) time.Time {
@@ -59,7 +56,7 @@ func GetTradeTime(code string) time.Time {
 }
 
 func getRealStock(m *model.Market) {
-	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=5000&order_by=amount&type=%s", m.StrType)
+	url := fmt.Sprintf("%s/screener/quote/list?size=5000&order_by=amount&type=%s", XQHOST, m.StrType)
 
 	for {
 		freq := m.Freq()
@@ -145,7 +142,8 @@ func updateMinute(s []model.Stock, m *model.Market) {
 }
 
 func GetKline(symbol string) {
-	url := "https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=SH600519&begin=0&period=day&count=9999&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci&type=before"
+	url := fmt.Sprintf("%s/chart/kline.json?symbol=%s&begin=0&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", XQHOST, symbol)
+
 	body, _ := util.GetAndRead(url)
 	fmt.Println(body)
 }

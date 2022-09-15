@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/bytedance/sonic"
@@ -163,4 +164,14 @@ func Mean[T int | int64 | float64](arr []T) float64 {
 		sum += arr[i]
 	}
 	return float64(sum) / float64(len(arr))
+}
+
+// go func for every duration
+func GoJob(f func(), duration time.Duration) {
+	go func() {
+		for {
+			f()
+			time.Sleep(duration)
+		}
+	}()
 }
