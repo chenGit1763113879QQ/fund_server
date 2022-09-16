@@ -314,22 +314,21 @@ func GetKline(c *gin.Context) {
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
 		Group(bson.M{
-			"_id":      bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
-			"time":     bson.M{"$last": "$time"},
-			"open":     bson.M{"$first": "$open_qfq"},
-			"close":    bson.M{"$last": "$close_qfq"},
-			"high":     bson.M{"$max": "$high_qfq"},
-			"low":      bson.M{"$min": "$low_qfq"},
-			"ratio":    bson.M{"$last": "$ratio"},
-			"main_net": bson.M{"$sum": "$main_net"},
-			"vol":      bson.M{"$sum": "$vol"},
-			"amount":   bson.M{"$sum": "$amount"},
-			"pct_chg":  bson.M{"$sum": "$pct_chg"},
-			"tr":       bson.M{"$sum": "$tr"},
-			// "rzrqye":      bson.M{"$last": "$rzrqye"},
+			"_id":   bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
+			"time":  bson.M{"$last": "$time"},
+			"open":  bson.M{"$first": "$open"},
+			"close": bson.M{"$last": "$close"},
+			"high":  bson.M{"$max": "$high"},
+			"low":   bson.M{"$min": "$low"},
+			// "ratio":       bson.M{"$last": "$ratio"},
+			"main_net":    bson.M{"$sum": "$main_net"},
+			"vol":         bson.M{"$sum": "$vol"},
+			"amount":      bson.M{"$sum": "$amount"},
+			"pct_chg":     bson.M{"$sum": "$pct_chg"},
+			"tr":          bson.M{"$sum": "$tr"},
+			"balance":     bson.M{"$last": "$balance"},
 			"winner_rate": bson.M{"$last": "$winner_rate"},
 		}).
-		Match(bson.M{"close": bson.M{"$gt": 0}}).
 		Sort(bson.M{"time": 1}).Do()).All(&data)
 
 	if req.Head > 0 {

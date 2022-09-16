@@ -29,7 +29,6 @@ class DataBase:
 
     def start(self):
         self.stock_indicate()
-        self.ids_kline()
 
     # 后台运行
     def background_worker(self, func=None, arg_list=None, work_name=None, work_num=16):
@@ -66,8 +65,6 @@ class DataBase:
                               fields="ts_code,buy_lg_amount,sell_lg_amount,buy_elg_amount,sell_elg_amount,net_mf_amount").set_index(
                     'ts_code'),
                 pro.cyq_perf(trade_date=dt, fields='ts_code,weight_avg,winner_rate').set_index('ts_code'),
-                pro.hk_hold(trade_date=dt, fields="ts_code,ratio").set_index('ts_code'),
-                pro.margin_detail(trade_date=dt, fields="ts_code,rzrqye").set_index('ts_code'),
 
             ], axis=1).rename(
                 columns={'net_mf_amount': 'net', 'pct_change': 'pct_chg', 'turnover_rate': 'tr', 'volume_ratio': 'vr'})
@@ -104,58 +101,6 @@ class DataBase:
 
         cal = pro.index_daily(ts_code='000001.SH', start_date='20120101', fields="trade_date")
         self.background_worker(func=func, arg_list=cal['trade_date'], work_name='更新股票行情')
-
-    # 板块行情
-    def ids_kline(self):
-        def func(i):
-            code = i['_id']
-            # 板块行情
-            df = pro.ths_daily(
-                ts_code=code, fields='trade_date,open,close,high,low,vol,pct_change,turnover_rate'). \
-                rename(columns={'pct_change': 'pct_chg', 'turnover_rate': 'tr'})
-
-            df.index = pd.to_datetime(df['trade_date'])
-
-            # 成分股
-            indicates = {'_id': 0, 'time': 1, 'main_net': 1, 'ratio': 1, 'pe_ttm': 1, 'pb': 1, 'winner_rate': 1}
-            members = pd.concat([
-                pd.DataFrame(klineDB[md5_code(con)].find(
-                    {'code': con, 'time': {'$gte': df.index.min()}}, indicates
-                )) for con in i['members']
-            ])
-
-            # 聚合计算
-            for col in indicates:
-                if col not in members:
-                    members[col] = None
-
-            members = members.groupby('time').agg({
-                'main_net': 'sum', 'ratio': 'mean', 'pe_ttm': 'mean', 'pb': 'mean', 'winner_rate': 'mean',
-            })
-
-            # 合并数据
-            df = pd.concat([df, members], axis=1).sort_index().round(2)
-
-            # 索引
-            klineDB[md5_code(code)].create_index([("code", 1), ("time", 1)], unique=True)
-
-            # 写入数据
-            df['code'] = code
-            df['time'] = df.index
-
-            klineDB[md5_code(code)].bulk_write([
-                UpdateOne({'code': code, 'time': index},
-                          {'$set': i.dropna().to_dict()}, upsert=True) for index, i in df.iterrows()
-            ])
-            # 更新价格
-            latest = df.iloc[-1]
-            realStock.update_one({'_id': code}, {'$set': {
-                'open': latest.open, 'high': latest.high, 'low': latest.low, 'close': df.iloc[-2].close,
-                'price': latest.close,
-            }})
-
-        items = realStock.find({'type': {'$in': ['I1', 'I2', 'C']}})
-        self.background_worker(func=func, arg_list=list(items), work_name='更新板块行情')
 
 
 t = DataBase()

@@ -1,46 +1,18 @@
 package job
 
 import (
-	"context"
 	"fmt"
 	"fund/db"
 	"fund/model"
 	"fund/util"
-	"strconv"
+	"math"
+	"reflect"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/gocarina/gocsv"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-const XQHOST = "https://xueqiu.com/service/v5/stock"
-
-var (
-	ctx = context.Background()
-
-	Markets = []*model.Market{
-		{Market: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz"},
-		{Market: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk"},
-		{Market: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us"},
-	}
-
-	Cond = sync.NewCond(&sync.Mutex{})
-)
-
-func init() {
-	getMarketStatus()
-	log.Info().Msg("init market status success.")
-
-	for _, p := range Markets {
-		go getRealStock(p)
-	}
-	go getNews()
-
-	util.GoJob(getMarketStatus, time.Second)
-}
 
 func GetTradeTime(code string) time.Time {
 	splits := strings.Split(code, ".")
@@ -150,17 +122,21 @@ func InitKlines() {
 	}
 	db.Stock.Find(ctx, bson.M{}).All(&stocks)
 
-	p := util.NewPool(5)
+	// concurrent get kline
+	p := util.NewPool(8)
 	for _, i := range stocks {
 		p.NewTask(func() {
-			klines := getKline(i.Symbol)
-			db.KlineDB.Collection(util.Md5Code(i.Id)).InsertMany(ctx, klines)
+			klines := getKline(i.Symbol, i.Id)
+
+			coll := db.KlineDB.Collection(util.Md5Code(i.Id))
+			coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
+			coll.InsertMany(ctx, klines)
 		})
 	}
 }
 
-func getKline(symbol string) []model.Kline {
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=0&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", symbol)
+func getKline(symbol string, Id string) []model.Kline {
+	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=1350000000000&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", symbol)
 	body, _ := util.XueQiuAPI(url)
 
 	var data struct {
@@ -171,26 +147,46 @@ func getKline(symbol string) []model.Kline {
 	}
 	util.UnmarshalJSON(body, &data)
 
-	// read csv data
-	var src strings.Builder
-	src.WriteString(strings.Join(data.Data.Column, ","))
+	klines := make([]model.Kline, len(data.Data.Item))
 
-	for _, arr := range data.Data.Item {
-		src.WriteByte('\n')
-		for i := range arr {
-			src.WriteString(strconv.FormatFloat(arr[i], 'f', 2, 32))
+	// reflect
+	typeof := reflect.TypeOf(model.Kline{})
 
-			if i != len(arr)-1 {
-				src.WriteByte(',')
+	// get csv tag
+	tags := make([]string, typeof.NumField())
+	for i := 0; i < typeof.NumField(); i++ {
+		tags[i] = strings.Split(typeof.Field(i).Tag.Get("csv"), ",")[0]
+	}
+
+	for i, items := range data.Data.Item {
+		value := reflect.ValueOf(&klines[i]).Elem()
+
+		for colI, col := range data.Data.Column {
+			for tagI, tag := range tags {
+				if tag == col {
+					// null number
+					if items[colI] < 0.0001 || items[colI] > math.Pow(10, 16) {
+						break
+					}
+
+					// set value
+					switch value.Field(tagI).Kind() {
+					case reflect.Float64:
+						value.Field(tagI).SetFloat(items[colI])
+
+					case reflect.Int64:
+						value.Field(tagI).SetInt(int64(items[colI]))
+					}
+					break
+				}
 			}
 		}
 	}
 
-	// phase csv data
-	var klines []model.Kline
-	if err := gocsv.Unmarshal(strings.NewReader(src.String()), &klines); err != nil {
-		log.Warn().Msg(err.Error())
-		return nil
+	// set
+	for i := range klines {
+		klines[i].Code = Id
+		klines[i].Time = time.Unix(klines[i].TimeStamp/1000, 0)
 	}
 
 	return klines

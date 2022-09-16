@@ -4,21 +4,12 @@ import (
 	"fmt"
 	"fund/db"
 	"fund/util"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 const XUEQIU = "https://xueqiu.com/service/screener"
-
-func init() {
-	util.GoJob(func() {
-		for _, p := range Markets {
-			go getCategoryIndustries(p.StrMarket)
-		}
-	}, time.Hour, time.Second*5)
-}
 
 func getCategoryIndustries(market string) {
 	// industries
@@ -27,6 +18,7 @@ func getCategoryIndustries(market string) {
 
 	var industries []struct {
 		IndCode    string `json:"encode" bson:"_id"`
+		Symbol     string
 		MarketType uint8  `bson:"marketType"`
 		Type       uint8  `bson:"type"`
 		Name       string `json:"name"`
@@ -73,6 +65,7 @@ func getCategoryIndustries(market string) {
 					ids.MarketType = util.MARKET_US
 					stk.Code += ".US"
 				}
+				ids.Symbol = ids.IndCode
 
 				db.Stock.InsertOne(ctx, ids)
 

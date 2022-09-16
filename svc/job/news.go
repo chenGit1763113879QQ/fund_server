@@ -22,8 +22,6 @@ func getNews() {
 		Title    string `csv:"title"`
 	}
 
-	// wait
-	time.Sleep(time.Second * 5)
 	db.Stock.Find(ctx, bson.M{}).Select(bson.M{"_id": 1, "name": 1}).All(&stocks)
 
 	// 去除多余后缀
@@ -34,39 +32,34 @@ func getNews() {
 			stocks[i].Name = pre
 		}
 	}
-	location, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		panic(err)
+
+	loc, _ := time.LoadLocation("Asia/Shanghai")
+
+	if err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news); err != nil {
+		log.Error().Msg(err.Error())
+		return
 	}
 
-	for {
-		err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news)
-		if err != nil {
-			log.Error().Msg(err.Error())
+	for _, n := range news {
+		// 去除【行情】类资讯
+		if strings.Contains(n.Content, "【行情】") {
 			continue
 		}
-		for _, n := range news {
-			// 去除【行情】类资讯
-			if strings.Contains(n.Content, "【行情】") {
-				continue
-			}
-			// 匹配
-			codes := make([]string, 0)
-			for _, s := range stocks {
-				if strings.Contains(n.Title, s.Name) && s.Name != "证券" {
-					if len(codes) < 3 {
-						codes = append(codes, s.Code)
-					}
+		// 匹配
+		codes := make([]string, 0)
+		for _, s := range stocks {
+			if strings.Contains(n.Title, s.Name) && s.Name != "证券" {
+				if len(codes) < 3 {
+					codes = append(codes, s.Code)
 				}
 			}
-			t, _ := time.ParseInLocation("2006-01-02 15:04:05", n.Datetime, location)
-			db.Article.InsertOne(ctx, &model.Article{
-				Title:    n.Title,
-				Content:  n.Content,
-				CreateAt: t,
-				Tag:      codes,
-			})
 		}
-		time.Sleep(time.Minute)
+		t, _ := time.ParseInLocation("2006-01-02 15:04:05", n.Datetime, loc)
+		db.Article.InsertOne(ctx, &model.Article{
+			Title:    n.Title,
+			Content:  n.Content,
+			CreateAt: t,
+			Tag:      codes,
+		})
 	}
 }

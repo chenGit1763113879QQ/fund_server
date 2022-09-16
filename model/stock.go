@@ -88,7 +88,6 @@ type Stock struct {
 	Tr     float64 `json:"turnover_rate"`          // 换手率
 	Vr     float64 `json:"volume_ratio"`           // 量比
 
-	FirstPct float64 `json:"first_percent" bson:"first_pct"`       // 上市首日涨幅
 	Pct5m    float64 `json:"percent5m" bson:"pct_5m"`              // 5分钟涨幅
 	PctYear  float64 `json:"current_year_percent" bson:"pct_year"` // 今年涨幅
 	TotalPct float64 `json:"total_percent" bson:"total_pct"`       // 至今涨幅
@@ -215,15 +214,19 @@ type Range struct {
 
 type Kline struct {
 	PctChg float64 `bson:"pct_chg" csv:"percent"`
-	Tr     float64 `csv:"turnoverrate"`
+	Tr     float64 `bson:",omitempty" csv:"turnoverrate"`
 
-	Pe float64 `bson:"pe_ttm" csv:"pe"`
-	Pb float64 `csv:"pb"`
+	Pe float64 `bson:",omitempty" csv:"pe"`
+	Pb float64 `bson:",omitempty" csv:"pb"`
 
 	Time      time.Time `bson:"time" csv:"-"`
 	TimeStamp int64     `bson:"-" csv:"timestamp"`
+	Code      string    `bson:"code"`
 
-	Close  float64 `bson:"close_hfq"`
+	Open   float64 `csv:"open"`
+	High   float64 `csv:"high"`
+	Low    float64 `csv:"low"`
+	Close  float64 `csv:"close"`
 	Vol    int64   `csv:"volume"`
 	Amount float64 `csv:"amount"`
 
@@ -250,13 +253,14 @@ type Kline struct {
 	BOLL_UP  float64 `bson:"boll_upper" csv:"ub"`
 	BOLL_LOW float64 `bson:"boll_lower" csv:"lb"`
 
-	CCI float64 `csv:"cci"`
+	CCI     float64 `csv:"cci"`
+	Balance float64 `bson:",omitempty" csv:"balance"`
 
-	HoldVolCN   float64 `bson:"hold_vol_cn,omitempty" csv:"hold_volume_cn"`
+	HoldVolCN   int64   `bson:"hold_vol_cn,omitempty" csv:"hold_volume_cn"`
 	HoldRatioCN float64 `bson:"hold_ratio_cn,omitempty" csv:"hold_ratio_cn"`
-	NetVolCN    float64 `bson:"net_vol_cn,omitempty" csv:"net_volume_cn"`
+	NetVolCN    int64   `bson:"net_vol_cn,omitempty" csv:"net_volume_cn"`
 
-	HoldVolHK   float64 `bson:"hold_vol_hk,omitempty" csv:"hold_volume_hk"`
+	HoldVolHK   int64   `bson:"hold_vol_hk,omitempty" csv:"hold_volume_hk"`
 	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" csv:"hold_ratio_hk"`
-	NetVolHK    float64 `bson:"net_vol_hk,omitempty" csv:"net_volume_hk"`
+	NetVolHK    int64   `bson:"net_vol_hk,omitempty" csv:"net_volume_hk"`
 }
