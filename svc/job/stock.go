@@ -6,10 +6,12 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gocarina/gocsv"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -141,9 +143,55 @@ func updateMinute(s []model.Stock, m *model.Market) {
 	go bulk.Run(ctx)
 }
 
-func GetKline(symbol string) {
-	url := fmt.Sprintf("%s/chart/kline.json?symbol=%s&begin=0&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", XQHOST, symbol)
+func InitKlines() {
+	var stocks []struct {
+		Id     string `bson:"_id"`
+		Symbol string
+	}
+	db.Stock.Find(ctx, bson.M{}).All(&stocks)
 
-	body, _ := util.GetAndRead(url)
-	fmt.Println(body)
+	p := util.NewPool(5)
+	for _, i := range stocks {
+		p.NewTask(func() {
+			klines := getKline(i.Symbol)
+			db.KlineDB.Collection(util.Md5Code(i.Id)).InsertMany(ctx, klines)
+		})
+	}
+}
+
+func getKline(symbol string) []model.Kline {
+	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=0&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", symbol)
+	body, _ := util.XueQiuAPI(url)
+
+	var data struct {
+		Data struct {
+			Column []string    `json:"column"`
+			Item   [][]float64 `json:"item"`
+		} `json:"data"`
+	}
+	util.UnmarshalJSON(body, &data)
+
+	// read csv data
+	var src strings.Builder
+	src.WriteString(strings.Join(data.Data.Column, ","))
+
+	for _, arr := range data.Data.Item {
+		src.WriteByte('\n')
+		for i := range arr {
+			src.WriteString(strconv.FormatFloat(arr[i], 'f', 2, 32))
+
+			if i != len(arr)-1 {
+				src.WriteByte(',')
+			}
+		}
+	}
+
+	// phase csv data
+	var klines []model.Kline
+	if err := gocsv.Unmarshal(strings.NewReader(src.String()), &klines); err != nil {
+		log.Warn().Msg(err.Error())
+		return nil
+	}
+
+	return klines
 }

@@ -5,7 +5,7 @@ build:
 	go build -tags=sonic,nomsgpack .
 
 tidy:
-	go env -w GOPROXY=https://goproxy.cn
+	go env -w GOPROXY=https://goproxy.cn,direct
 	go get -u
 	go mod tidy
 	go clean

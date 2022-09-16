@@ -14,11 +14,10 @@ const XUEQIU = "https://xueqiu.com/service/screener"
 
 func init() {
 	util.GoJob(func() {
-		time.Sleep(time.Second * 5)
 		for _, p := range Markets {
-			getCategoryIndustries(p.StrMarket)
+			go getCategoryIndustries(p.StrMarket)
 		}
-	}, time.Hour)
+	}, time.Hour, time.Second*5)
 }
 
 func getCategoryIndustries(market string) {

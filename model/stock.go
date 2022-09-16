@@ -76,8 +76,9 @@ type Stock struct {
 	LimitUpDays int   `json:"limitup_days" bson:"limitup_days,omitempty"` // 涨停天数
 	Time        int64 `json:"time" bson:"time,omitempty"`
 
-	Id   string `json:"symbol" bson:"_id"` // 代码
-	Name string `json:"name"`              // 名称
+	Id     string `bson:"_id"`
+	Symbol string `json:"symbol"`
+	Name   string `json:"name"`
 
 	Pinyin     string `bson:"pinyin,omitempty"`      // 拼音
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"` // 简单拼音
@@ -159,6 +160,7 @@ func (s *Stock) CalData(m *Market) {
 		}
 	}
 
+	s.Id = s.Symbol
 	s.MarketType = m.Market
 	s.Type = m.Type
 
@@ -174,6 +176,9 @@ func (s *Stock) CalData(m *Market) {
 		s.Id += ".HK"
 
 	case util.MARKET_US:
+		if s.Id[0] == '.' {
+			s.Id = s.Id[1:]
+		}
 		s.Id += ".US"
 	}
 
@@ -209,39 +214,49 @@ type Range struct {
 }
 
 type Kline struct {
-	PctChg float32 `bson:"pct_chg"`
-	Tr     float32
+	PctChg float64 `bson:"pct_chg" csv:"percent"`
+	Tr     float64 `csv:"turnoverrate"`
 
-	Pe float32 `bson:"pe_ttm"`
-	Pb float32
+	Pe float64 `bson:"pe_ttm" csv:"pe"`
+	Pb float64 `csv:"pb"`
 
-	Time time.Time `bson:"time"`
+	Time      time.Time `bson:"time" csv:"-"`
+	TimeStamp int64     `bson:"-" csv:"timestamp"`
 
 	Close  float64 `bson:"close_hfq"`
-	Amount float64
+	Vol    int64   `csv:"volume"`
+	Amount float64 `csv:"amount"`
 
-	MainNet float64
-	Net     float64
+	MainNet float64 `bson:",omitempty"`
+	Net     float64 `bson:",omitempty"`
 
-	// Dv float64 `bson:"dv_ttm"`
+	Dv float64 `bson:"dv_ttm,omitempty"`
 
-	//KDJ_K float64 `bson:"kdj_k"`
-	//KDJ_D float64 `bson:"kdj_d"`
-	// KDJ_J float64 `bson:"kdj_j"`
+	KDJ_K float64 `bson:"kdj_k" csv:"kdjk"`
+	KDJ_D float64 `bson:"kdj_d" csv:"kdjd"`
+	KDJ_J float64 `bson:"kdj_j" csv:"kdjj"`
 
 	WinnerRate float64 `bson:"winner_rate"`
 
-	//RSI6  float64 `bson:"rsi_6"`
-	//RSI12 float64 `bson:"rsi_12"`
-	//RSI24 float64 `bson:"rsi_24"`
+	RSI6  float64 `bson:"rsi_6" csv:"rsi1"`
+	RSI12 float64 `bson:"rsi_12" csv:"rsi2"`
+	RSI24 float64 `bson:"rsi_24" csv:"rsi3"`
 
-	//MACD float64 `bson:"macd"`
-	//MACD_DEA float64 `bson:"macd_dea"`
-	//MACD_DIF float64 `bson:"macd_dif"`
+	MACD     float64 `bson:"macd" csv:"macd"`
+	MACD_DEA float64 `bson:"macd_dea" csv:"dea"`
+	MACD_DIF float64 `bson:"macd_dif" csv:"dif"`
 
-	//BOLL_MID float64 `bson:"boll_mid"`
-	//BOLL_UP float64 `bson:"boll_upper"`
-	//BOLL_LOW float64 `bson:"boll_lower"`
+	BOLL_MID float64 `bson:"boll_mid" csv:"ma20"`
+	BOLL_UP  float64 `bson:"boll_upper" csv:"ub"`
+	BOLL_LOW float64 `bson:"boll_lower" csv:"lb"`
 
-	// CCI float64
+	CCI float64 `csv:"cci"`
+
+	HoldVolCN   float64 `bson:"hold_vol_cn,omitempty" csv:"hold_volume_cn"`
+	HoldRatioCN float64 `bson:"hold_ratio_cn,omitempty" csv:"hold_ratio_cn"`
+	NetVolCN    float64 `bson:"net_vol_cn,omitempty" csv:"net_volume_cn"`
+
+	HoldVolHK   float64 `bson:"hold_vol_hk,omitempty" csv:"hold_volume_hk"`
+	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" csv:"hold_ratio_hk"`
+	NetVolHK    float64 `bson:"net_vol_hk,omitempty" csv:"net_volume_hk"`
 }

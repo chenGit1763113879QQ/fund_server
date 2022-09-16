@@ -13,8 +13,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var pinyinArg = pinyin.NewArgs()
-
 func getIndustry(m *model.Market) {
 	var data []model.Industry
 
@@ -38,6 +36,7 @@ func getIndustry(m *model.Market) {
 
 	bulk := db.Stock.Bulk()
 
+	// tradeTime
 	tradeTime := m.TradeTime.Format("2006/01/02 15:04")
 	date := strings.Split(tradeTime, " ")[0]
 
@@ -45,8 +44,10 @@ func getIndustry(m *model.Market) {
 
 	minBulk := db.MinuteDB.Collection(date).Bulk()
 
+	pinyinArg := pinyin.NewArgs()
+
 	for _, i := range data {
-		i.PctLeader.PctChg = -101
+		i.PctLeader.PctChg = -100
 
 		// leader stock
 		for _, stk := range i.ConnList {
@@ -148,12 +149,10 @@ func getMarketStatus() {
 				cst, _ := time.LoadLocation(i.Market.TimeZone)
 				p.TradeTime = time.Unix(i.Stock.Time/1000, 0).In(cst)
 
-				i.Stock.MarketType = p.Market
 				i.Stock.Type = util.TYPE_INDEX
 
+				db.Stock.UpdateId(ctx, i.Stock.Id, bson.M{"$set": i.Stock})
 				db.Stock.InsertOne(ctx, i.Stock)
-				db.Stock.UpdateId(ctx, i.Stock.Id, i)
-				break
 			}
 		}
 	}

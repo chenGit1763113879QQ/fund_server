@@ -56,19 +56,32 @@ func GetAndRead(url string) ([]byte, error) {
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, _ := ioutil.ReadAll(res.Body)
+	return body, nil
+}
+
+// get xueqiu api
+func XueQiuAPI(url string) ([]byte, error) {
+	// add token
+	req, _ := http.NewRequest(http.MethodGet, url, nil)
+	req.Header.Add("cookie", "xq_a_token=80b283f898285a9e82e2e80cf77e5a4051435344")
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Error().Msg(err.Error())
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
 	return body, nil
 }
 
 // tushare api
-func TushareApi(apiName string, params any, fields any, val any) error {
+func TushareApi(api string, params any, fields any, val any) error {
 	// set params
 	req := map[string]any{
-		"api_name": apiName,
+		"api_name": api,
 		"token":    "8dbaa93be7f8d09210ca9cb0843054417e2820203201c0f3f7643410",
 	}
 	if params != nil {
@@ -82,14 +95,12 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 	// post request
 	res, err := http.Post("https://api.tushare.pro", "application/json", bytes.NewReader(param))
 	if err != nil {
+		log.Error().Msg(err.Error())
 		return err
 	}
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return err
-	}
+	body, _ := ioutil.ReadAll(res.Body)
 
 	var data struct {
 		Data struct {
@@ -103,7 +114,7 @@ func TushareApi(apiName string, params any, fields any, val any) error {
 		return err
 	}
 	if data.Msg != "" {
-		log.Warn().Msg(err.Error())
+		log.Warn().Msgf("tushare err msg: %s", data.Msg)
 	}
 
 	// read csv data
@@ -147,12 +158,12 @@ func IsChinese(str string) bool {
 func UnmarshalJSON(body []byte, data any, path ...interface{}) error {
 	node, err := sonic.Get(body, path...)
 	if err != nil {
-		log.Warn().Msgf("unmarshal err: %s", err.Error())
+		log.Warn().Msgf("unmarshal get node err: %s", err.Error())
 		return err
 	}
 	raw, err := node.Raw()
 	if err != nil {
-		log.Warn().Msgf("unmarshal err: %s", err.Error())
+		log.Warn().Msgf("unmarshal get raw err: %s", err.Error())
 		return err
 	}
 	return sonic.UnmarshalString(raw, &data)
@@ -167,8 +178,13 @@ func Mean[T int | int64 | float64](arr []T) float64 {
 }
 
 // go func for every duration
-func GoJob(f func(), duration time.Duration) {
+func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
 	go func() {
+		// delay
+		if len(delay) > 0 {
+			time.Sleep(delay[0])
+		}
+		// go func
 		for {
 			f()
 			time.Sleep(duration)
