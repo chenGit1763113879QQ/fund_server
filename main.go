@@ -41,9 +41,10 @@ func main() {
 		GET("/detail", stock.ConnectItems).
 		GET("/market", stock.ConnectMarket)
 
+	ws.GET("/notify", stock.Notify)
+
 	api.Group("/stock").
 		GET("/search", stock.Search).
-		GET("/all", stock.GetAllStock).
 		GET("/list", stock.GetStockList).
 		GET("/chart/kline", stock.GetKline).
 		GET("/predict", stock.PredictKline).
@@ -51,8 +52,6 @@ func main() {
 		POST("/group", stock.AddGroup).
 		PUT("/group", stock.ChangeGroup).
 		DELETE("/group", stock.RemGroup).
-		POST("/active", stock.GetActiveList).
-		PUT("/active", stock.PutActiveList).
 		GET("/group/in", stock.InGroup)
 
 	api.Group("back").

@@ -180,3 +180,22 @@ func ConnectMarket(c *gin.Context) {
 	}
 	job.Cond.L.Unlock()
 }
+
+func Notify(c *gin.Context) {
+	ws := model.NewWebSocket(c)
+
+	var req struct {
+		Code string `json:"code"`
+		Type uint8  `json:"type"`
+	}
+
+	for ws.Err == nil {
+		ws.ReadJson(&req)
+
+		switch req.Type {
+		default:
+			minute := GetMinute(req.Code)
+			ws.WriteJson(bson.M{"data": minute})
+		}
+	}
+}

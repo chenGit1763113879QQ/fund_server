@@ -9,77 +9,8 @@ import (
 	"time"
 
 	"github.com/go-gota/gota/dataframe"
-	"github.com/mozillazg/go-pinyin"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-func getIndustry(m *model.Market) {
-	var data []model.Industry
-
-	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"type": bson.M{"$in": []int{util.TYPE_I1, util.TYPE_I2}}}).
-		Lookup("stock", "members", "_id", "c").
-		Project(bson.M{
-			"c":        bson.M{"name": 1, "pct_chg": 1},
-			"name":     "$name",
-			"pct_chg":  bson.M{"$avg": "$c.pct_chg"},
-			"main_net": bson.M{"$sum": "$c.main_net"},
-			"vol":      bson.M{"$sum": "$c.vol"},
-			"tr":       bson.M{"$avg": "$c.tr"},
-			"amount":   bson.M{"$sum": "$c.amount"},
-			"mc":       bson.M{"$sum": "$c.mc"},
-			"fmc":      bson.M{"$sum": "$c.fmc"},
-			"pe_ttm":   bson.M{"$avg": "$c.pe_ttm"},
-			"pb":       bson.M{"$avg": "$c.pb"},
-			"pct_year": bson.M{"$avg": "$c.pct_year"},
-		}).Do()).All(&data)
-
-	bulk := db.Stock.Bulk()
-
-	// tradeTime
-	tradeTime := m.TradeTime.Format("2006/01/02 15:04")
-	date := strings.Split(tradeTime, " ")[0]
-
-	newTime, _ := time.Parse("2006/01/02 15:04", tradeTime)
-
-	minBulk := db.MinuteDB.Collection(date).Bulk()
-
-	pinyinArg := pinyin.NewArgs()
-
-	for _, i := range data {
-		i.PctLeader.PctChg = -100
-
-		// leader stock
-		for _, stk := range i.ConnList {
-			if stk.PctChg > i.PctLeader.PctChg {
-				i.PctLeader = stk
-			}
-		}
-		i.ConnList = nil
-
-		if m.Freq() == 2 {
-			// add pinyin
-			if util.IsChinese(i.Name) {
-				for _, c := range pinyin.LazyPinyin(i.Name, pinyinArg) {
-					i.Pinyin += c
-					i.LazyPinyin += string(c[0])
-				}
-			}
-		}
-
-		bulk.UpdateId(i.Id, bson.M{"$set": i})
-
-		// minute data
-		if m.Status {
-			minBulk.UpsertId(
-				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"pct_chg": i.PctChg, "vol": i.Vol, "main_net": i.MainNet, "minutes": newTime.Minute()},
-			)
-		}
-	}
-	bulk.Run(ctx)
-	minBulk.Run(ctx)
-}
 
 func getDistribution(m *model.Market) {
 	var data []struct {

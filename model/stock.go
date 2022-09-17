@@ -120,6 +120,7 @@ type Industry struct {
 	MarketType uint8 `bson:"marketType,omitempty"`
 	Type       uint8 `bson:"type,omitempty"`
 	Vol        uint  `bson:"vol"`
+	Followers  uint  `bson:"followers"`
 
 	Id         string `bson:"_id"`
 	Name       string `bson:"name"`
@@ -216,8 +217,10 @@ type Kline struct {
 	PctChg float64 `bson:"pct_chg" csv:"percent"`
 	Tr     float64 `bson:",omitempty" csv:"turnoverrate"`
 
-	Pe float64 `bson:",omitempty" csv:"pe"`
-	Pb float64 `bson:",omitempty" csv:"pb"`
+	Pe  float64 `bson:",omitempty" csv:"pe"`
+	Pb  float64 `bson:",omitempty" csv:"pb"`
+	Ps  float64 `bson:",omitempty" csv:"ps"`
+	Pcf float64 `bson:",omitempty" csv:"pcf"`
 
 	Time      time.Time `bson:"time" csv:"-"`
 	TimeStamp int64     `bson:"-" csv:"timestamp"`
@@ -254,6 +257,7 @@ type Kline struct {
 	BOLL_LOW float64 `bson:"boll_lower" csv:"lb"`
 
 	CCI     float64 `csv:"cci"`
+	Mc      float64 `csv:"market_capital"`
 	Balance float64 `bson:",omitempty" csv:"balance"`
 
 	HoldVolCN   int64   `bson:"hold_vol_cn,omitempty" csv:"hold_volume_cn"`

@@ -35,7 +35,7 @@ func getRealStock(m *model.Market) {
 	for {
 		freq := m.Freq()
 
-		if freq == 2 && m.Type == util.TYPE_STOCK {
+		if freq == 2 {
 			log.Info().Msgf("update stock[%s]", m.StrType)
 		}
 
@@ -63,7 +63,7 @@ func getRealStock(m *model.Market) {
 			}
 		}
 
-		bulk.Run(ctx)
+		go bulk.Run(ctx)
 		updateMinute(data, m)
 
 		if freq >= 1 {
@@ -108,7 +108,7 @@ func updateMinute(s []model.Stock, m *model.Market) {
 			bulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
 				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg,
-					"main_net": i.MainNet, "minutes": newTime.Minute()},
+					"main_net": i.MainNet},
 			)
 		}
 	}
@@ -120,19 +120,18 @@ func InitKlines() {
 		Id     string `bson:"_id"`
 		Symbol string
 	}
-	db.Stock.Find(ctx, bson.M{}).All(&stocks)
+	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).Sort("marketType").All(&stocks)
 
-	// concurrent get kline
-	p := util.NewPool(8)
+	// get kline
 	for _, i := range stocks {
-		p.NewTask(func() {
-			klines := getKline(i.Symbol, i.Id)
+		klines := getKline(i.Symbol, i.Id)
 
-			coll := db.KlineDB.Collection(util.Md5Code(i.Id))
-			coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-			coll.InsertMany(ctx, klines)
-		})
+		coll := db.KlineDB.Collection(util.Md5Code(i.Id))
+		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
+		coll.RemoveAll(ctx, bson.M{"code": i.Id})
+		coll.InsertMany(ctx, klines)
 	}
+	log.Info().Msg("init kline success.")
 }
 
 func getKline(symbol string, Id string) []model.Kline {
@@ -186,7 +185,8 @@ func getKline(symbol string, Id string) []model.Kline {
 	// set
 	for i := range klines {
 		klines[i].Code = Id
-		klines[i].Time = time.Unix(klines[i].TimeStamp/1000, 0)
+		timeStr := time.Unix(klines[i].TimeStamp/1000, 0).Format("2006/01/02")
+		klines[i].Time, _ = time.Parse("2006/01/02", timeStr)
 	}
 
 	return klines

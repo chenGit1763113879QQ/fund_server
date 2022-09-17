@@ -125,47 +125,10 @@ func GetStockList(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-func GetActiveList(c *gin.Context) {
-	req := new(model.Group)
-	chart := c.Query("chart")
-	c.ShouldBind(req)
-
-	filter := bson.M{"marketType": req.Market, "type": "stock"}
-
-	// parents
-	if len(req.Parent) > 0 {
-		members := make([]string, 0)
-		db.Stock.Find(ctx, bson.M{"_id": bson.M{"$in": req.Parent}}).Distinct("members", &members)
-		filter["_id"] = bson.M{"$in": members}
-	}
-
-	// select range
-	ranges := append(req.MarketRange, req.FinaRange...)
-	for _, r := range ranges {
-		if r.Left != 0 || r.Right != 0 {
-			ind := bson.M{}
-			// left range
-			if r.Left != 0 {
-				ind["$gte"] = util.Exp(r.Unit > 0, r.Left*r.Unit, r.Left)
-			}
-			// right range
-			if r.Right != 0 {
-				ind["$lte"] = util.Exp(r.Unit > 0, r.Right*r.Unit, r.Right)
-			}
-			filter[r.Name] = ind
-		}
-	}
-
-	data := make([]bson.M, 0)
-	db.Stock.Find(ctx, filter).Select(listOpt).Sort("-amount").Limit(10).All(&data)
-
-	AddChart(chart, data)
-	midware.Success(c, data)
-}
-
 func GetMinute(code string) any {
 	var data []struct {
 		Price   float64 `json:"price"`
+		PctChg  float64 `json:"pct_chg" bson:"pct_chg"`
 		Avg     float64 `json:"avg"`
 		MainNet float64 `json:"main_net"`
 		Time    int64   `json:"time"`
@@ -300,34 +263,35 @@ func GetKline(c *gin.Context) {
 	if req.StartDate == "" {
 		switch req.Period {
 		case "y", "q", "m":
-			req.StartDate = "2000-01-01"
+			req.StartDate = "2012/01/01"
 		case "w":
-			req.StartDate = "2013-01-01"
+			req.StartDate = "2013/01/01"
 		default:
-			req.StartDate = "2017-09-01"
+			req.StartDate = "2017/09/01"
 		}
 	}
 
-	t, _ := time.Parse("2006-01-02", req.StartDate)
+	t, _ := time.Parse("2006/01/02", req.StartDate)
 
 	var data []bson.M
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
 		Group(bson.M{
-			"_id":   bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
-			"time":  bson.M{"$last": "$time"},
-			"open":  bson.M{"$first": "$open"},
-			"close": bson.M{"$last": "$close"},
-			"high":  bson.M{"$max": "$high"},
-			"low":   bson.M{"$min": "$low"},
-			// "ratio":       bson.M{"$last": "$ratio"},
-			"main_net":    bson.M{"$sum": "$main_net"},
-			"vol":         bson.M{"$sum": "$vol"},
-			"amount":      bson.M{"$sum": "$amount"},
-			"pct_chg":     bson.M{"$sum": "$pct_chg"},
-			"tr":          bson.M{"$sum": "$tr"},
-			"balance":     bson.M{"$last": "$balance"},
-			"winner_rate": bson.M{"$last": "$winner_rate"},
+			"_id":           bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
+			"time":          bson.M{"$last": "$time"},
+			"open":          bson.M{"$first": "$open"},
+			"close":         bson.M{"$last": "$close"},
+			"high":          bson.M{"$max": "$high"},
+			"low":           bson.M{"$min": "$low"},
+			"main_net":      bson.M{"$sum": "$main_net"},
+			"vol":           bson.M{"$sum": "$vol"},
+			"amount":        bson.M{"$sum": "$amount"},
+			"pct_chg":       bson.M{"$sum": "$pct_chg"},
+			"tr":            bson.M{"$sum": "$tr"},
+			"balance":       bson.M{"$last": "$balance"},
+			"winner_rate":   bson.M{"$last": "$winner_rate"},
+			"hold_ratio_cn": bson.M{"$last": "$hold_ratio_cn"},
+			"net_vol_cn":    bson.M{"$sum": "$net_vol_cn"},
 		}).
 		Sort(bson.M{"time": 1}).Do()).All(&data)
 
@@ -340,16 +304,6 @@ func GetKline(c *gin.Context) {
 	} else {
 		midware.Success(c, data)
 	}
-}
-
-func GetAllStock(c *gin.Context) {
-	data := make([]bson.M, 0)
-	params := make(map[string]string)
-	c.ShouldBind(params)
-
-	err := db.Stock.Find(ctx, params).Select(bson.M{"name": 1, "type": 1, "marketType": 1}).
-		Sort("marketType", "-type", "-amount").All(&data)
-	midware.Auto(c, err, data)
 }
 
 func DetailBK(c *gin.Context) {
@@ -371,8 +325,11 @@ func DetailBKGlobal(c *gin.Context) {
 		Match(bson.M{"marketType": req.Market, "type": util.TYPE_I1}).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
-			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "count": 1,
-			"children": bson.M{"_id": 1, "name": 1, "amount": 1, "pct_chg": 1, "mc": 1},
+			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "followers": 1,
+			"children": bson.M{
+				"_id": 1, "name": 1, "price": 1, "amount": 1, "pct_chg": 1,
+				"mc": 1, "followers": 1, "pe_ttm": 1,
+			},
 		}).Do()).All(&data)
 
 	midware.Success(c, data)
@@ -548,17 +505,4 @@ func InGroup(c *gin.Context) {
 	}
 
 	midware.Success(c, bson.M{"allGroup": allGroup, "inGroup": inGroup})
-}
-
-func PutActiveList(c *gin.Context) {
-	req := new(model.Group)
-	c.ShouldBind(req)
-	uid := c.MustGet("id").(pr.ObjectID)
-
-	req.IsActive = true
-
-	err := db.User.UpdateOne(ctx, bson.M{"_id": uid, "groups.name": req.Name}, bson.M{
-		"$set": bson.M{"groups.$": req},
-	})
-	midware.Auto(c, err, nil)
 }

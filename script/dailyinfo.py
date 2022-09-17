@@ -21,19 +21,8 @@ class DailyInfo:
         self.client = pymongo.MongoClient("mongodb://localhost:27017")["fund"]
         self.stockdb = self.client["stock"]
 
-        self.stock_basic()
         self.index_members()
         self.fina_data()
-
-    # 基本信息
-    def stock_basic(self):
-        opts = []
-        # 北向资金持股
-        hk = pro.hk_hold()
-        for i in hk.itertuples():
-            opts.append(UpdateOne({"_id": i.ts_code}, {"$set": {'ratio': i.ratio, 'hk_vol': i.vol}}))
-
-        self.stockdb.bulk_write(opts)
 
     # 指数成分编制
     def index_members(self):

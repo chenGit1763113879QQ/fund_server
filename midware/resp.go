@@ -41,11 +41,11 @@ func Error(c *gin.Context, err error, code ...int) {
 func Success(c *gin.Context, data any, msg ...string) {
 	if len(msg) > 0 {
 		c.AbortWithStatusJSON(http.StatusOK, bson.M{
-			"status": true, "data": data, "msg": msg[0],
+			"status": true, "data": Zip(data), "msg": msg[0],
 		})
 	} else {
 		c.AbortWithStatusJSON(http.StatusOK, bson.M{
-			"status": true, "data": data,
+			"status": true, "data": Zip(data),
 		})
 	}
 }
