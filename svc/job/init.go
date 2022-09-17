@@ -40,6 +40,7 @@ func init() {
 		// industry
 		for _, p := range Markets {
 			getCategoryIndustries(p.StrMarket)
+			getIndustry(p)
 		}
 		// kline
 		InitKlines()

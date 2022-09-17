@@ -41,17 +41,7 @@ func getCategoryIndustries(market string) {
 	// save
 	bulk := db.Stock.Bulk()
 
-	var prefix string
-
 	for _, ids := range industries {
-		// type
-		if ids.IndCode[0:3] != prefix {
-			ids.Type = util.TYPE_I1
-			prefix = ids.IndCode[0:3]
-		} else {
-			ids.Type = util.TYPE_I2
-		}
-
 		for _, stk := range stock {
 			if ids.IndCode == stk.IndCode {
 
@@ -68,6 +58,8 @@ func getCategoryIndustries(market string) {
 					ids.MarketType = util.MARKET_US
 					stk.Code += ".US"
 				}
+
+				ids.Type = util.TYPE_IDS
 				ids.Symbol = ids.IndCode
 
 				db.Stock.InsertOne(ctx, ids)
@@ -92,7 +84,7 @@ func getIndustry(m *model.Market) {
 	var data []model.Industry
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"type": bson.M{"$in": []int{util.TYPE_I1, util.TYPE_I2}}}).
+		Match(bson.M{"type": util.TYPE_IDS}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
 			"c":         bson.M{"name": 1, "pct_chg": 1},

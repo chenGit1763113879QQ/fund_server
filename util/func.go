@@ -24,8 +24,7 @@ const (
 	TYPE_STOCK
 	TYPE_INDEX
 	TYPE_FUND
-	TYPE_I1
-	TYPE_I2
+	TYPE_IDS
 )
 
 // In slice
@@ -143,16 +142,12 @@ func Md5Code(code string) string {
 }
 
 func IsChinese(str string) bool {
-	for i, r := range str {
-		// only check first character
-		if unicode.Is(unicode.Han, r) {
-			return true
-		}
-		if i > 0 {
-			break
-		}
+	if len(str) == 0 {
+		return false
 	}
-	return false
+	// only check first character
+	r := rune(str[0])
+	return unicode.Is(unicode.Han, r)
 }
 
 func UnmarshalJSON(body []byte, data any, path ...interface{}) error {

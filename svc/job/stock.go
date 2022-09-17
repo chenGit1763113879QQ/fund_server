@@ -122,14 +122,21 @@ func InitKlines() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).Sort("marketType").All(&stocks)
 
-	// get kline
 	for _, i := range stocks {
+		// search cache
+		if ok, _ := db.LimitDB.Exists(ctx, "kline:"+i.Id).Result(); ok > 0 {
+			continue
+		}
+
+		// get kline
 		klines := getKline(i.Symbol, i.Id)
 
 		coll := db.KlineDB.Collection(util.Md5Code(i.Id))
 		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
 		coll.RemoveAll(ctx, bson.M{"code": i.Id})
 		coll.InsertMany(ctx, klines)
+
+		db.LimitDB.Set(ctx, "kline:"+i.Id, 1, time.Hour*12)
 	}
 	log.Info().Msg("init kline success.")
 }

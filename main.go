@@ -30,8 +30,7 @@ func main() {
 	api.Group("/user").
 		GET("/emailCode", user.EmailCode).
 		POST("/login", user.Login).
-		POST("/newAuth", user.Register).
-		GET("/info", midware.Authorize, user.GetInfo)
+		POST("/newAuth", user.Register)
 
 	// api.Use(midware.Authorize)
 	// ws.Use(midware.Authorize)
@@ -58,8 +57,7 @@ func main() {
 		GET("/logs", stock.GetBackLogs)
 
 	api.Group("/market").
-		GET("/bk", stock.DetailBK).
-		GET("/bkpro", stock.DetailBKGlobal)
+		GET("/bk", stock.AllBKDetails)
 
 	api.Group("/article").
 		GET("/:id", user.GetArticle).

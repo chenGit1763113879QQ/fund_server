@@ -306,23 +306,19 @@ func GetKline(c *gin.Context) {
 	}
 }
 
-func DetailBK(c *gin.Context) {
-	var data []bson.M
-	db.Stock.Find(ctx, bson.M{"type": c.Query("type")}).Select(bson.M{
-		"name": 1, "pct_chg": 1, "amount": 1, "main_net": 1,
-	}).All(&data)
-	midware.Success(c, data)
-}
-
-func DetailBKGlobal(c *gin.Context) {
+func AllBKDetails(c *gin.Context) {
 	var req struct {
-		Market uint `form:"market"`
+		Market uint8  `form:"market" binding:"required"`
+		Sort   string `form:"sort" binding:"required"`
 	}
-	c.ShouldBind(&req)
+	if err := c.ShouldBind(&req); err != nil {
+		midware.Error(c, err)
+		return
+	}
 
 	var data []bson.M
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"marketType": req.Market, "type": util.TYPE_I1}).
+		Match(bson.M{"marketType": req.Market, "type": util.TYPE_IDS}).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
 			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "followers": 1,
@@ -330,7 +326,7 @@ func DetailBKGlobal(c *gin.Context) {
 				"_id": 1, "name": 1, "price": 1, "amount": 1, "pct_chg": 1,
 				"mc": 1, "followers": 1, "pe_ttm": 1,
 			},
-		}).Do()).All(&data)
+		}).Sort(bson.M{req.Sort: -1}).Limit(50).Do()).All(&data)
 
 	midware.Success(c, data)
 }

@@ -6,6 +6,7 @@ import (
 	"fund/midware"
 	"fund/model"
 	"fund/svc/job"
+	"fund/util"
 	"fund/util/mongox"
 	"time"
 
@@ -52,10 +53,6 @@ func ConnectCList(c *gin.Context) {
 			}
 		}
 	}()
-
-	// cache.Stock.Watch(c.Request.Context(), func(i any) {
-	// 	ws.WriteBson(i)
-	// }, req.List)
 }
 
 // 股票详情
@@ -133,9 +130,6 @@ func ConnectMarket(c *gin.Context) {
 
 	// 板块行情
 	jobBK := func() {
-		if req.MarketType != "CN" {
-			return
-		}
 		dt := make([]bson.M, 0)
 		listOpt := bson.M{
 			"name": 1, "pct_chg": 1, "main_net": 1, "pct_leader": 1, "main_net_leader": 1,
@@ -143,16 +137,16 @@ func ConnectMarket(c *gin.Context) {
 
 		switch req.BkType {
 		case "I":
-			db.Stock.Find(ctx, bson.M{"type": bson.M{"$in": bson.A{"I1", "I2"}}}).
-				Sort(req.BkSort).Select(listOpt).Limit(6).All(&dt)
-
-		case "C":
-			db.Stock.Find(ctx, bson.M{"type": "C"}).
-				Sort(req.BkSort).Select(listOpt).Limit(6).All(&dt)
+			db.Stock.Find(ctx, bson.M{
+				"marketType": req.MarketType,
+				"type":       util.TYPE_IDS,
+			}).Sort(req.BkSort).Select(listOpt).Limit(6).All(&dt)
 
 		case "Map":
-			db.Stock.Find(ctx, bson.M{"type": bson.M{"$in": bson.A{"I1", "I2"}}}).
-				Sort("-amount").Select(listOpt).Limit(15).All(&dt)
+			db.Stock.Find(ctx, bson.M{
+				"marketType": req.MarketType,
+				"type":       util.TYPE_IDS,
+			}).Sort("-amount").Select(listOpt).Limit(15).All(&dt)
 		}
 		ws.WriteJson(bson.M{"bk": dt})
 	}

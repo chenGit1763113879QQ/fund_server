@@ -45,16 +45,6 @@ func generateToken(id string) (string, error) {
 	return tokenClaims.SignedString(jwtSecret)
 }
 
-// 获取用户信息
-func GetInfo(c *gin.Context) {
-	id := c.MustGet("id").(pr.ObjectID)
-
-	user := new(model.User)
-	err := db.User.Find(ctx, bson.M{"_id": id}).One(user)
-
-	midware.Auto(c, err, user)
-}
-
 // 登录
 func Login(c *gin.Context) {
 	form := new(model.LoginForm)
