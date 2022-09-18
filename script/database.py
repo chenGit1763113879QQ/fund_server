@@ -13,7 +13,6 @@ from pymongo import UpdateOne
 pro = ts.pro_api(token='8dbaa93be7f8d09210ca9cb0843054417e2820203201c0f3f7643410')
 
 # 连接mongo
-realStock = pymongo.MongoClient("mongodb://localhost:27017")["fund"]["stock"]
 klineDB = pymongo.MongoClient("mongodb://localhost:27017")["kline"]
 
 
@@ -57,17 +56,14 @@ class DataBase:
     def stock_indicate(self):
         def func(dt: str):
             df = pd.concat([
-                pro.stk_factor(trade_date=dt).set_index('ts_code'),
-                pro.daily_basic(trade_date=dt,
-                                fields='turnover_rate,volume_ratio,ts_code,pe_ttm,pb,ps_ttm,dv_ttm').set_index(
-                    'ts_code'),
-                pro.moneyflow(trade_date=dt,
-                              fields="ts_code,buy_lg_amount,sell_lg_amount,buy_elg_amount,sell_elg_amount,net_mf_amount").set_index(
+                pro.moneyflow(
+                    trade_date=dt,
+                    fields="ts_code,buy_lg_amount,sell_lg_amount,buy_elg_amount,sell_elg_amount,net_mf_amount").set_index(
                     'ts_code'),
                 pro.cyq_perf(trade_date=dt, fields='ts_code,weight_avg,winner_rate').set_index('ts_code'),
 
             ], axis=1).rename(
-                columns={'net_mf_amount': 'net', 'pct_change': 'pct_chg', 'turnover_rate': 'tr', 'volume_ratio': 'vr'})
+                columns={'net_mf_amount': 'net'})
 
             # 大单资金流
             df['main_buy'] = df['buy_lg_amount'] + df['buy_elg_amount']

@@ -7,52 +7,11 @@ import (
 	"fund/model"
 	"fund/svc/job"
 	"fund/util"
-	"fund/util/mongox"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
-	pr "go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-// 自选列表
-func ConnectCList(c *gin.Context) {
-	ws := model.NewWebSocket(c)
-	defer ws.Conn.Close()
-
-	var req struct {
-		Type  string   `json:"type"`
-		Chart string   `json:"chart"`
-		List  []string `json:"list"`
-	}
-	c.ShouldBind(&req)
-
-	uid := c.MustGet("id").(pr.ObjectID)
-
-	init := func() {
-		var data model.Groups
-		db.User.Aggregate(ctx, mongox.Pipeline().
-			Match(bson.M{"_id": uid}).
-			Lookup("stock", "groups.list", "_id", "stocks").
-			Project(bson.M{"groups": 1, "stocks": 1}).Do()).
-			One(&data)
-
-		ws.WriteJson(data)
-	}
-
-	// listen
-	go func() {
-		init()
-		for ws.Err == nil {
-			ws.ReadJson(&req)
-
-			switch req.Type {
-			case "refresh":
-				init()
-			}
-		}
-	}()
-}
 
 // 股票详情
 func ConnectItems(c *gin.Context) {
@@ -105,20 +64,6 @@ func ConnectMarket(c *gin.Context) {
 	}
 	c.ShouldBind(&req)
 
-	// 市场指数
-	jobIndex := func() {
-		data := make([]bson.M, 0)
-		switch req.MarketType {
-		case "CN":
-			data = getStockList("000001.SH,399001.SZ,399006.SZ", "price")
-		case "HK":
-			data = getStockList("HSI.HK,HSCEI.HK,HSTECH.HK", "price")
-		case "US":
-			data = getStockList("NDX.US,DJIA.US,SPX.US", "price")
-		}
-		ws.WriteJson(bson.M{"index": data})
-	}
-
 	// 市场总览
 	jobMarket := func() {
 		temp, _ := db.Numbers.Load(req.MarketType)
@@ -154,8 +99,6 @@ func ConnectMarket(c *gin.Context) {
 	go func() {
 		for ws.Err == nil {
 			ws.ReadJson(&req)
-
-			jobIndex()
 			jobBK()
 			jobMarket()
 		}
@@ -164,7 +107,6 @@ func ConnectMarket(c *gin.Context) {
 	job.Cond.L.Lock()
 
 	for ws.Err == nil {
-		jobIndex()
 		jobMarket()
 		jobBK()
 

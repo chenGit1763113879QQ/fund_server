@@ -36,7 +36,6 @@ func main() {
 	// ws.Use(midware.Authorize)
 
 	ws.Group("/stock").
-		GET("/list", stock.ConnectCList).
 		GET("/detail", stock.ConnectItems).
 		GET("/market", stock.ConnectMarket)
 

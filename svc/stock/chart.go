@@ -53,8 +53,7 @@ func GetSimpleChart(code string, chartType string) any {
 		}
 
 		db.MinuteDB.Collection(job.GetTradeTime(code).Format("2006/01/02")).
-			Find(ctx, bson.M{"_id.code": code}).
-			Select(bson.M{"_id": 1, "pct_chg": 1}).All(&arr)
+			Find(ctx, bson.M{"_id.code": code}).All(&arr)
 
 		for i := range arr {
 			arr[i].Time = arr[i].Id.Time
@@ -63,7 +62,9 @@ func GetSimpleChart(code string, chartType string) any {
 		data.Total = 240
 		data.Value = arr
 		data.Open = 0
-		data.Close = arr[len(arr)-1].PctChg
+		if len(arr) > 0 {
+			data.Close = arr[len(arr)-1].PctChg
+		}
 
 	case "60day":
 		var arr []struct {
@@ -71,14 +72,14 @@ func GetSimpleChart(code string, chartType string) any {
 			Close float64   `json:"value" bson:"close"`
 		}
 
-		t, _ := time.Parse("2006/01/02", "2022/05/01")
+		t, _ := time.Parse("2006/01/02", "2022/01/01")
 
 		db.KlineDB.Collection(util.Md5Code(code)).
 			Find(ctx, bson.M{"code": code, "time": bson.M{"$gt": t}}).
 			Sort("-time").Select(bson.M{"close": 1, "time": 1}).
-			Limit(60).All(&arr)
+			Limit(100).All(&arr)
 
-		data.Total = 60
+		data.Total = 100
 		data.Value = arr
 		if len(arr) > 0 {
 			data.Open = arr[len(arr)-1].Close
@@ -119,9 +120,9 @@ func GetKline(c *gin.Context) {
 		case "y", "q", "m":
 			req.StartDate = "2012/01/01"
 		case "w":
-			req.StartDate = "2013/01/01"
+			req.StartDate = "2015/01/01"
 		default:
-			req.StartDate = "2017/09/01"
+			req.StartDate = "2019/01/01"
 		}
 	}
 

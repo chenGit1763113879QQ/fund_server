@@ -9,7 +9,6 @@ import (
 	"fund/util"
 	"fund/util/mongox"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qiniu/qmgo"
@@ -40,24 +39,6 @@ func GetStockDetail(code string) bson.M {
 				data["status"] = i.Status
 				data["status_name"] = i.StatusName
 				data["trade_date"] = i.TradeTime
-				break
-			}
-		}
-	}
-	return data
-}
-
-func getStockList(codeStr string, chart string) []bson.M {
-	codes := strings.Split(codeStr, ",")
-
-	data := make([]bson.M, 0)
-	db.Stock.Find(ctx, bson.M{"_id": bson.M{"$in": codes}}).Select(listOpt).All(&data)
-
-	// resort
-	for i := range codes {
-		for j := range data {
-			if codes[i] == data[j]["_id"] {
-				data[i], data[j] = data[j], data[i]
 				break
 			}
 		}
