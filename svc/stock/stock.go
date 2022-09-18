@@ -5,18 +5,15 @@ import (
 	"errors"
 	"fund/db"
 	"fund/midware"
-	"fund/model"
 	"fund/svc/job"
 	"fund/util"
 	"fund/util/mongox"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qiniu/qmgo"
 	"go.mongodb.org/mongo-driver/bson"
-	pr "go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -65,7 +62,6 @@ func getStockList(codeStr string, chart string) []bson.M {
 			}
 		}
 	}
-	AddChart(chart, data)
 	return data
 }
 
@@ -121,95 +117,7 @@ func GetStockList(c *gin.Context) {
 			}
 		}
 	}
-	AddChart(req.Chart, data)
 	midware.Success(c, data)
-}
-
-func GetMinute(code string) any {
-	var data []struct {
-		Price   float64 `json:"price"`
-		PctChg  float64 `json:"pct_chg" bson:"pct_chg"`
-		Avg     float64 `json:"avg"`
-		MainNet float64 `json:"main_net"`
-		Time    int64   `json:"time"`
-		Vol     int64   `json:"vol"`
-		Id      struct {
-			Time int64
-		} `json:"-" bson:"_id"`
-	}
-
-	db.MinuteDB.Collection(job.GetTradeTime(code).Format("2006/01/02")).
-		Find(ctx, bson.M{"_id.code": code}).All(&data)
-	for i := range data {
-		data[i].Time = data[i].Id.Time
-	}
-	return data
-}
-
-func AddChart(chart string, items []bson.M) {
-	var f func(item bson.M, arg string)
-
-	switch chart {
-	case "60day":
-		// 60day trends
-		f = func(item bson.M, arg string) {
-			code := item["_id"].(string)
-
-			var data []struct {
-				Close float64 `bson:"close"`
-			}
-
-			db.KlineDB.Collection(util.Md5Code(code)).Find(ctx, bson.M{"_id.code": code}).
-				Sort("-_id.time").Select(bson.M{"close": 1}).Limit(60).All(&data)
-
-			price := make([]float64, len(data))
-			for i := 0; i < len(data); i++ {
-				price[len(data)-i-1] = data[i].Close
-			}
-
-			item["chart"] = bson.M{"total": 60, "value": price, "type": "line"}
-		}
-
-	case "price", "main_net":
-		// simple chart
-		f = func(item bson.M, arg string) {
-			var data []struct {
-				Price   float64 `bson:"price"`
-				Net     float64 `bson:"net"`
-				MainNet float64 `bson:"main_net"`
-			}
-
-			var total, sp = 0, 6
-			switch item["marketType"] {
-			case "US":
-				total = 390 / sp
-			case "HK":
-				total = 310 / sp
-			case "CN":
-				sp = 5
-				total = 240 / sp
-			}
-
-			// query
-			db.MinuteDB.Collection(job.GetTradeTime(item["_id"].(string)).Format("2006/01/02")).
-				Find(ctx, bson.M{"_id.code": item["_id"], "minutes": bson.M{"$mod": bson.A{sp, 0}}}).
-				Select(bson.M{arg: 1}).All(&data)
-
-			// array
-			arr := make([]float64, len(data)+1)
-			for i := range data {
-				arr[i] = data[i].Price
-			}
-			arr[len(arr)-1], _ = item["price"].(float64)
-
-			item["chart"] = bson.M{"total": total + 1, "value": arr, "type": "line"}
-		}
-	default:
-		return
-	}
-	for i := range items {
-		f(items[i], chart)
-	}
 }
 
 func Search(c *gin.Context) {
@@ -235,77 +143,6 @@ func Search(c *gin.Context) {
 	midware.Success(c, bson.M{"stock": data, "arts": arts})
 }
 
-func GetKline(c *gin.Context) {
-	var req struct {
-		Code      string `form:"code" binding:"required"`
-		Period    string `form:"period" binding:"required"`
-		StartDate string `form:"start_date"`
-		Head      int    `form:"head"`
-		Tail      int    `form:"tail"`
-	}
-	if err := c.ShouldBind(&req); err != nil {
-		midware.Error(c, err)
-		return
-	}
-
-	var items bson.M
-
-	db.Stock.Find(ctx, bson.M{"_id": req.Code}).One(&items)
-	if items == nil {
-		midware.Error(c, errors.New("code not found"))
-		return
-	}
-
-	format := map[string]string{
-		"d": "%Y/%m/%d", "w": "%Y/%V", "m": "%Y/%m", "y": "%Y",
-	}[req.Period]
-
-	if req.StartDate == "" {
-		switch req.Period {
-		case "y", "q", "m":
-			req.StartDate = "2012/01/01"
-		case "w":
-			req.StartDate = "2013/01/01"
-		default:
-			req.StartDate = "2017/09/01"
-		}
-	}
-
-	t, _ := time.Parse("2006/01/02", req.StartDate)
-
-	var data []bson.M
-	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
-		Group(bson.M{
-			"_id":           bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
-			"time":          bson.M{"$last": "$time"},
-			"open":          bson.M{"$first": "$open"},
-			"close":         bson.M{"$last": "$close"},
-			"high":          bson.M{"$max": "$high"},
-			"low":           bson.M{"$min": "$low"},
-			"main_net":      bson.M{"$sum": "$main_net"},
-			"vol":           bson.M{"$sum": "$vol"},
-			"amount":        bson.M{"$sum": "$amount"},
-			"pct_chg":       bson.M{"$sum": "$pct_chg"},
-			"tr":            bson.M{"$sum": "$tr"},
-			"balance":       bson.M{"$last": "$balance"},
-			"winner_rate":   bson.M{"$last": "$winner_rate"},
-			"hold_ratio_cn": bson.M{"$last": "$hold_ratio_cn"},
-			"net_vol_cn":    bson.M{"$sum": "$net_vol_cn"},
-		}).
-		Sort(bson.M{"time": 1}).Do()).All(&data)
-
-	if req.Head > 0 {
-		midware.Success(c, data[:req.Head])
-
-	} else if req.Tail > 0 {
-		midware.Success(c, data[len(data)-req.Tail:])
-
-	} else {
-		midware.Success(c, data)
-	}
-}
-
 func AllBKDetails(c *gin.Context) {
 	var req struct {
 		Market uint8  `form:"market" binding:"required"`
@@ -324,7 +161,7 @@ func AllBKDetails(c *gin.Context) {
 			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "followers": 1,
 			"children": bson.M{
 				"_id": 1, "name": 1, "price": 1, "amount": 1, "pct_chg": 1,
-				"mc": 1, "followers": 1, "pe_ttm": 1,
+				"mc": 1, "followers": 1,
 			},
 		}).Sort(bson.M{req.Sort: -1}).Limit(50).Do()).All(&data)
 
@@ -346,159 +183,4 @@ func PredictKline(c *gin.Context) {
 		Unwind("$预测股票").
 		Unwind("$匹配股票").Do()).All(&data)
 	midware.Success(c, data)
-}
-
-func getGroups(id pr.ObjectID) *model.Groups {
-	g := new(model.Groups)
-	db.User.Find(ctx, bson.M{"_id": id}).One(g)
-	return g
-}
-
-func GetGroups(c *gin.Context) {
-	uid := c.MustGet("id").(pr.ObjectID)
-	chart := c.Query("chart")
-
-	var data model.Groups
-	db.User.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"_id": uid}).
-		Lookup("stock", "groups.list", "_id", "stocks").
-		Project(bson.M{"groups": 1, "stocks": listOpt}).Do()).One(&data)
-
-	AddChart(chart, data.Stocks)
-	midware.Success(c, data)
-}
-
-func AddGroup(c *gin.Context) {
-	req := new(model.Group)
-	c.ShouldBind(req)
-	uid := c.MustGet("id").(pr.ObjectID)
-
-	if req.Name == "" {
-		midware.Error(c, errors.New("分组名为空"))
-		return
-	}
-
-	g := getGroups(uid)
-	for _, i := range g.Groups {
-		if i.Name == req.Name {
-			midware.Error(c, errors.New("分组名重复"))
-			return
-		}
-	}
-
-	if len(g.Groups) >= 6 {
-		midware.Error(c, errors.New("最多创建六个分组"))
-		return
-	}
-
-	if !req.IsActive {
-		req.List = []string{}
-	}
-
-	err := db.User.UpdateId(ctx, uid, bson.M{"$addToSet": bson.M{"groups": req}})
-	midware.Auto(c, err, "新建分组成功")
-}
-
-func RemGroup(c *gin.Context) {
-	var req struct {
-		Name string `json:"name" binding:"required"`
-	}
-	if err := c.ShouldBind(&req); err != nil {
-		midware.Error(c, err)
-		return
-	}
-
-	uid := c.MustGet("id").(pr.ObjectID)
-	g := getGroups(uid)
-
-	for _, gr := range g.Groups {
-		if gr.Name == req.Name && gr.IsSys {
-			midware.Error(c, errors.New("不能删除该分组"))
-			return
-		}
-	}
-
-	err := db.User.UpdateId(ctx, uid, bson.M{
-		"$pull": bson.M{"groups": bson.M{"name": req.Name}},
-	})
-
-	midware.Auto(c, err, "已删除分组")
-}
-
-func ChangeGroup(c *gin.Context) {
-	var req struct {
-		Code    string   `json:"code" binding:"required"`
-		InGroup []string `json:"inGroup" binding:"required"`
-	}
-	if err := c.ShouldBind(&req); err != nil {
-		midware.Error(c, err)
-		return
-	}
-
-	uid := c.MustGet("id").(pr.ObjectID)
-
-	group := getGroups(uid)
-	bulk := db.User.Bulk()
-
-	for _, g := range group.Groups {
-		if g.IsSys || g.IsActive {
-			continue
-		}
-		filter := bson.M{"_id": uid, "groups.name": g.Name}
-		// del
-		bulk.UpdateOne(filter, bson.M{"$pull": bson.M{"groups.$.list": req.Code}})
-		if util.In(g.Name, req.InGroup) {
-			// add
-			bulk.UpdateOne(filter, bson.M{"$push": bson.M{"groups.$.list": bson.M{"$each": bson.A{req.Code}, "$position": 0}}})
-		}
-	}
-
-	_, err := bulk.Run(ctx)
-	midware.Auto(c, err, "修改分组成功")
-}
-
-func InGroup(c *gin.Context) {
-	code := c.Query("code")
-	res, _ := db.Stock.Find(ctx, bson.M{"_id": code}).Count()
-	if res == 0 {
-		midware.Error(c, errors.New("code not exist"))
-		return
-	}
-
-	uid := c.MustGet("id").(pr.ObjectID)
-	groups := getGroups(uid)
-
-	// 获取最近浏览长度
-	var length int
-	for _, g := range groups.Groups {
-		if g.Name == "最近浏览" {
-			length = len(g.List)
-		}
-	}
-	bulk := db.User.Bulk()
-	filter := bson.M{"_id": uid, "groups.name": "最近浏览"}
-
-	if length >= 50 {
-		bulk.UpdateOne(filter, bson.M{"$pop": bson.M{"groups.$.list": 1}})
-	}
-
-	// 添加至最近浏览
-	bulk.UpdateOne(filter, bson.M{"$pull": bson.M{"groups.$.list": code}}).
-		UpdateOne(filter, bson.M{"$push": bson.M{"groups.$.list": bson.M{"$each": bson.A{code}, "$position": 0}}}).
-		Run(ctx)
-
-	allGroup := make([]string, 0)
-	inGroup := make([]string, 0)
-
-	for _, g := range groups.Groups {
-		if g.IsSys || g.IsActive {
-			continue
-		}
-		allGroup = append(allGroup, g.Name)
-		if util.In(code, g.List) {
-			inGroup = append(inGroup, g.Name)
-		}
-	}
-
-	midware.Success(c, bson.M{"allGroup": allGroup, "inGroup": inGroup})
 }

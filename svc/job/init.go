@@ -10,8 +10,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const XQHOST = "https://xueqiu.com/service/v5/stock"
-
 var (
 	ctx = context.Background()
 

@@ -12,24 +12,22 @@ import (
 )
 
 func getNews() {
-	var stocks []struct {
+	var stocks []*struct {
 		Code string `bson:"_id"`
 		Name string `bson:"name"`
 	}
-	var news []struct {
+	db.Stock.Find(ctx, bson.M{}).All(&stocks)
+
+	var news []*struct {
 		Datetime string `csv:"datetime"`
 		Content  string `csv:"content"`
 		Title    string `csv:"title"`
 	}
 
-	db.Stock.Find(ctx, bson.M{}).Select(bson.M{"_id": 1, "name": 1}).All(&stocks)
-
-	// 去除多余后缀
-	for i := range stocks {
-		pre, suf, _ := strings.Cut(stocks[i].Name, "-")
-		switch suf {
-		case "-SW", "-W", "-S", "-U", "-WD":
-			stocks[i].Name = pre
+	// 中文名去除后缀
+	for _, s := range stocks {
+		if util.IsChinese(s.Name) {
+			s.Name = strings.Split(s.Name, "-")[0]
 		}
 	}
 
@@ -41,19 +39,16 @@ func getNews() {
 	}
 
 	for _, n := range news {
-		// 去除【行情】类资讯
-		if strings.Contains(n.Content, "【行情】") {
-			continue
-		}
 		// 匹配
 		codes := make([]string, 0)
 		for _, s := range stocks {
 			if strings.Contains(n.Title, s.Name) && s.Name != "证券" {
-				if len(codes) < 3 {
+				if len(codes) < 5 {
 					codes = append(codes, s.Code)
 				}
 			}
 		}
+
 		t, _ := time.ParseInLocation("2006-01-02 15:04:05", n.Datetime, loc)
 		db.Article.InsertOne(ctx, &model.Article{
 			Title:    n.Title,

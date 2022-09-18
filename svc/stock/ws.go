@@ -37,7 +37,6 @@ func ConnectCList(c *gin.Context) {
 			Project(bson.M{"groups": 1, "stocks": 1}).Do()).
 			One(&data)
 
-		AddChart(req.Chart, data.Stocks)
 		ws.WriteJson(data)
 	}
 
@@ -179,17 +178,16 @@ func Notify(c *gin.Context) {
 	ws := model.NewWebSocket(c)
 
 	var req struct {
-		Code string `json:"code"`
-		Type uint8  `json:"type"`
+		Code  string `json:"code"`
+		Chart string `json:"chart"`
 	}
 
 	for ws.Err == nil {
 		ws.ReadJson(&req)
 
-		switch req.Type {
+		switch req.Chart {
 		default:
-			minute := GetMinute(req.Code)
-			ws.WriteJson(bson.M{"data": minute})
+			ws.WriteJson(bson.M{"data": GetSimpleChart(req.Code, req.Chart)})
 		}
 	}
 }

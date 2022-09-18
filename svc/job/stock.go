@@ -14,23 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func GetTradeTime(code string) time.Time {
-	splits := strings.Split(code, ".")
-	if len(splits) == 2 {
-		switch splits[1] {
-		case "SH", "SZ", "BJ", "TI":
-			return Markets[0].TradeTime
-		case "HK":
-			return Markets[1].TradeTime
-		case "US":
-			return Markets[2].TradeTime
-		}
-	}
-	return time.Unix(0, 0)
-}
-
 func getRealStock(m *model.Market) {
-	url := fmt.Sprintf("%s/screener/quote/list?size=5000&order_by=amount&type=%s", XQHOST, m.StrType)
+	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=5000&order_by=amount&type=%s", m.StrType)
 
 	for {
 		freq := m.Freq()
@@ -120,7 +105,7 @@ func InitKlines() {
 		Id     string `bson:"_id"`
 		Symbol string
 	}
-	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).Sort("marketType").All(&stocks)
+	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
 
 	for _, i := range stocks {
 		// search cache

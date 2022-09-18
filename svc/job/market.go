@@ -88,3 +88,18 @@ func getMarketStatus() {
 		}
 	}
 }
+
+func GetTradeTime(code string) time.Time {
+	splits := strings.Split(code, ".")
+	if len(splits) == 2 {
+		switch splits[1] {
+		case "SH", "SZ", "BJ", "TI":
+			return Markets[0].TradeTime
+		case "HK":
+			return Markets[1].TradeTime
+		case "US":
+			return Markets[2].TradeTime
+		}
+	}
+	return time.Unix(0, 0)
+}
