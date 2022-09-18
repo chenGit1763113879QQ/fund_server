@@ -5,8 +5,10 @@ import (
 	"time"
 )
 
+type Side uint8
+
 const (
-	SIDE_BUY uint8 = iota
+	SIDE_BUY Side = iota
 	SIDE_SELL
 )
 
@@ -23,7 +25,7 @@ type Trade struct {
 type Tick struct {
 	Price float64
 	Time  time.Time
-	Type  uint8
+	Type  Side
 }
 
 type Profit struct {

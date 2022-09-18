@@ -42,5 +42,10 @@ func init() {
 		}
 		// kline
 		InitKlines()
+
+		// backtest
+		loadKlines()
+		WinRate()
+		PredictStock()
 	}, time.Hour*12, time.Second*5)
 }

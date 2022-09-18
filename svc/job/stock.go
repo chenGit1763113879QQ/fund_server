@@ -5,8 +5,6 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
-	"math"
-	"reflect"
 	"strings"
 	"time"
 
@@ -100,94 +98,50 @@ func updateMinute(s []model.Stock, m *model.Market) {
 	go bulk.Run(ctx)
 }
 
-func InitKlines() {
-	var stocks []struct {
-		Id     string `bson:"_id"`
-		Symbol string
+func getNews() {
+	var stocks []*struct {
+		Code string `bson:"_id"`
+		Name string `bson:"name"`
 	}
-	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
+	db.Stock.Find(ctx, bson.M{}).All(&stocks)
 
-	f := func(strs ...string) {
-		symbol, id := strs[0], strs[1]
+	var news []*struct {
+		Datetime string `csv:"datetime"`
+		Content  string `csv:"content"`
+		Title    string `csv:"title"`
+	}
 
-		// search cache
-		if ok, _ := db.LimitDB.Exists(ctx, "kline:"+id).Result(); ok > 0 {
-			return
+	// 中文名去除后缀
+	for _, s := range stocks {
+		if util.IsChinese(s.Name) {
+			s.Name = strings.Split(s.Name, "-")[0]
 		}
-		// get kline
-		klines := getKline(symbol, id)
-
-		coll := db.KlineDB.Collection(util.Md5Code(id))
-		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-		coll.RemoveAll(ctx, bson.M{"code": id})
-		coll.InsertMany(ctx, klines)
-
-		db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*12)
 	}
 
-	p := util.NewPool(4)
-	for _, i := range stocks {
-		p.NewTask(f, i.Symbol, i.Id)
-	}
-	p.Wait()
+	loc, _ := time.LoadLocation("Asia/Shanghai")
 
-	log.Info().Msg("init kline success.")
-}
-
-func getKline(symbol string, Id string) []model.Kline {
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=1350000000000&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", symbol)
-	body, _ := util.XueQiuAPI(url)
-
-	var data struct {
-		Data struct {
-			Column []string    `json:"column"`
-			Item   [][]float64 `json:"item"`
-		} `json:"data"`
-	}
-	util.UnmarshalJSON(body, &data)
-
-	klines := make([]model.Kline, len(data.Data.Item))
-
-	// reflect
-	typeof := reflect.TypeOf(model.Kline{})
-
-	// get csv tag
-	tags := make([]string, typeof.NumField())
-	for i := 0; i < typeof.NumField(); i++ {
-		tags[i] = strings.Split(typeof.Field(i).Tag.Get("csv"), ",")[0]
+	if err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news); err != nil {
+		log.Error().Msg(err.Error())
+		return
 	}
 
-	for i, items := range data.Data.Item {
-		value := reflect.ValueOf(&klines[i]).Elem()
-
-		for colI, col := range data.Data.Column {
-			for tagI, tag := range tags {
-				if tag == col {
-					// null number
-					if items[colI] < 0.0001 || items[colI] > math.Pow(10, 16) {
-						break
-					}
-
-					// set value
-					switch value.Field(tagI).Kind() {
-					case reflect.Float64:
-						value.Field(tagI).SetFloat(items[colI])
-
-					case reflect.Int64:
-						value.Field(tagI).SetInt(int64(items[colI]))
-					}
-					break
+	for _, n := range news {
+		// 匹配
+		codes := make([]string, 0)
+		for _, s := range stocks {
+			if strings.Contains(n.Title, s.Name) && s.Name != "证券" {
+				if len(codes) < 5 {
+					codes = append(codes, s.Code)
 				}
 			}
 		}
-	}
 
-	// set
-	for i := range klines {
-		klines[i].Code = Id
-		timeStr := time.Unix(klines[i].TimeStamp/1000, 0).Format("2006/01/02")
-		klines[i].Time, _ = time.Parse("2006/01/02", timeStr)
+		t, _ := time.ParseInLocation("2006-01-02 15:04:05", n.Datetime, loc)
+		db.Article.InsertOne(ctx, &model.Article{
+			Title:    n.Title,
+			Content:  n.Content,
+			CreateAt: t,
+			Tag:      codes,
+		})
 	}
-
-	return klines
 }

@@ -20,8 +20,6 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// go pro.Init()
-
 	r.Use(midware.FlowController)
 
 	api := r.Group("/api")

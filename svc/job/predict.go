@@ -1,13 +1,17 @@
-package pro
+package job
 
 import (
+	"fund/cache"
 	"fund/db"
 	"fund/model"
+	"fund/util"
+	"math"
 	"time"
 
 	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
 	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func timeHist(k []model.Kline) []time.Time {
@@ -29,7 +33,14 @@ func closeHist(k []model.Kline) []float64 {
 func PredictStock() {
 	db.Predict.DropCollection(ctx)
 
-	for _, k := range getCNStocks() {
+	// load stocks
+	var id []string
+	db.Stock.Find(ctx, bson.M{
+		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK, "mc": bson.M{"$gt": 50 * math.Pow(10, 8)},
+	}).Distinct("_id", &id)
+
+	// run
+	for _, k := range id {
 		predict(k, 30)
 		predict(k, 60)
 	}
@@ -37,7 +48,7 @@ func PredictStock() {
 }
 
 func predict(code string, days int) {
-	src := klineMap.Load(code)
+	src := cache.KlineMap.Load(code)
 	if len(src) < days {
 		return
 	}
@@ -49,7 +60,7 @@ func predict(code string, days int) {
 	// results
 	results := make([]map[string]any, 0)
 
-	klineMap.Range(func(matchCode string, match []model.Kline) {
+	cache.KlineMap.Range(func(matchCode string, match []model.Kline) {
 		if len(match) < days {
 			return
 		}
