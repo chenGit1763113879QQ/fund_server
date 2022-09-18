@@ -45,13 +45,14 @@ func (s *KlineMap) Range(f func(k string, v []model.Kline)) {
 
 func initKline() {
 	log.Debug().Msg("kline start init")
-	p := util.DefaultPool()
-
 	t, _ := time.Parse("2006/01/02", "2017/01/01")
 
-	for _, id := range getCNStocks() {
-		p.NewTask(func() {
+	p := util.NewPool()
+	for _, code := range getCNStocks() {
+		p.NewTask(func(strs ...string) {
+			id := strs[0]
 			var data []model.Kline
+
 			// get kline
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
 				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
@@ -59,9 +60,9 @@ func initKline() {
 			if data != nil {
 				klineMap.Store(id, data)
 			}
-		})
+		}, code)
 	}
-
 	p.Wait()
+
 	log.Debug().Msgf("init kline success, length:%d", len(klineMap.data))
 }

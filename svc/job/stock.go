@@ -107,22 +107,30 @@ func InitKlines() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
 
-	for _, i := range stocks {
+	f := func(strs ...string) {
+		symbol, id := strs[0], strs[1]
+
 		// search cache
-		if ok, _ := db.LimitDB.Exists(ctx, "kline:"+i.Id).Result(); ok > 0 {
-			continue
+		if ok, _ := db.LimitDB.Exists(ctx, "kline:"+id).Result(); ok > 0 {
+			return
 		}
-
 		// get kline
-		klines := getKline(i.Symbol, i.Id)
+		klines := getKline(symbol, id)
 
-		coll := db.KlineDB.Collection(util.Md5Code(i.Id))
+		coll := db.KlineDB.Collection(util.Md5Code(id))
 		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-		coll.RemoveAll(ctx, bson.M{"code": i.Id})
+		coll.RemoveAll(ctx, bson.M{"code": id})
 		coll.InsertMany(ctx, klines)
 
-		db.LimitDB.Set(ctx, "kline:"+i.Id, 1, time.Hour*12)
+		db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*12)
 	}
+
+	p := util.NewPool(4)
+	for _, i := range stocks {
+		p.NewTask(f, i.Symbol, i.Id)
+	}
+	p.Wait()
+
 	log.Info().Msg("init kline success.")
 }
 

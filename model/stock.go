@@ -12,8 +12,8 @@ import (
 var pinyinArg = pinyin.NewArgs()
 
 type Market struct {
-	Market uint8
-	Type   uint8
+	Market util.Code
+	Type   util.Code
 	count  uint8
 
 	Status bool
@@ -68,8 +68,8 @@ func (m *Market) FreqIsZero() bool {
 }
 
 type Stock struct {
-	MarketType uint8 `bson:"marketType"` // 市场
-	Type       uint8 `bson:"type"`       // 类型
+	MarketType util.Code `bson:"marketType"` // 市场
+	Type       util.Code `bson:"type"`       // 类型
 
 	Vol         uint  `json:"volume"`                                     // 成交量
 	Followers   int   `json:"followers"`                                  // 关注数
@@ -238,26 +238,26 @@ type Kline struct {
 
 	Dv float64 `bson:"dv_ttm,omitempty"`
 
-	KDJ_K float64 `bson:"kdj_k" csv:"kdjk"`
-	KDJ_D float64 `bson:"kdj_d" csv:"kdjd"`
-	KDJ_J float64 `bson:"kdj_j" csv:"kdjj"`
+	KDJ_K float64 `bson:",omitempty" csv:"kdjk"`
+	KDJ_D float64 `bson:",omitempty" csv:"kdjd"`
+	KDJ_J float64 `bson:",omitempty" csv:"kdjj"`
 
 	WinnerRate float64 `bson:"winner_rate"`
 
-	RSI6  float64 `bson:"rsi_6" csv:"rsi1"`
-	RSI12 float64 `bson:"rsi_12" csv:"rsi2"`
-	RSI24 float64 `bson:"rsi_24" csv:"rsi3"`
+	RSI_6  float64 `bson:",omitempty" csv:"rsi1"`
+	RSI_12 float64 `bson:",omitempty" csv:"rsi2"`
+	RSI_24 float64 `bson:",omitempty" csv:"rsi3"`
 
-	MACD     float64 `bson:"macd" csv:"macd"`
-	MACD_DEA float64 `bson:"macd_dea" csv:"dea"`
-	MACD_DIF float64 `bson:"macd_dif" csv:"dif"`
+	MACD     float64 `bson:",omitempty" csv:"macd"`
+	MACD_DEA float64 `bson:",omitempty" csv:"dea"`
+	MACD_DIF float64 `bson:",omitempty" csv:"dif"`
 
-	BOLL_MID float64 `bson:"boll_mid" csv:"ma20"`
-	BOLL_UP  float64 `bson:"boll_upper" csv:"ub"`
-	BOLL_LOW float64 `bson:"boll_lower" csv:"lb"`
+	BOLL_MID float64 `bson:",omitempty" csv:"ma20"`
+	BOLL_UP  float64 `bson:",omitempty" csv:"ub"`
+	BOLL_LOW float64 `bson:",omitempty" csv:"lb"`
 
-	CCI     float64 `csv:"cci"`
-	Mc      float64 `csv:"market_capital"`
+	CCI     float64 `bson:",omitempty" csv:"cci"`
+	Mc      float64 `bson:",omitempty" csv:"market_capital"`
 	Balance float64 `bson:",omitempty" csv:"balance"`
 
 	HoldVolCN   int64   `bson:"hold_vol_cn,omitempty" csv:"hold_volume_cn"`

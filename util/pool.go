@@ -6,47 +6,55 @@ import (
 )
 
 type Pool struct {
-	work chan func()   // work
+	work chan Task
 	sem  chan struct{} // limit goroutine
 	wg   sync.WaitGroup
 }
 
-// Return New Pool
-func NewPool(size int) *Pool {
-	return &Pool{
-		work: make(chan func()),
-		sem:  make(chan struct{}, size),
-	}
+type Task struct {
+	work   func(...string)
+	params []string
 }
 
-// Return Default CPU Nums Pool
-func DefaultPool() *Pool {
+// Return New Pool
+func NewPool(size ...int) *Pool {
+	// Default CPU Nums
+	num := runtime.NumCPU()
+	if len(size) > 0 {
+		num = size[0]
+	}
+
 	return &Pool{
-		work: make(chan func()),
-		sem:  make(chan struct{}, runtime.NumCPU()/2),
+		work: make(chan Task),
+		sem:  make(chan struct{}, num),
 	}
 }
 
 // Add Task To Pool
-func (p *Pool) NewTask(task func()) {
+func (p *Pool) NewTask(task func(...string), params ...string) {
 	p.wg.Add(1)
 
+	t := Task{
+		work:   task,
+		params: params,
+	}
+
 	select {
-	case p.work <- task:
+	case p.work <- t:
 	case p.sem <- struct{}{}:
-		go p.worker(task)
+		go p.worker(t)
 	}
 }
 
 // Do Task Forever
-func (p *Pool) worker(task func()) {
+func (p *Pool) worker(t Task) {
 	defer func() { <-p.sem }()
 
 	ok := true
 	for ok {
-		task()
+		t.work(t.params...)
 		p.wg.Done()
-		task, ok = <-p.work
+		t, ok = <-p.work
 	}
 }
 

@@ -15,8 +15,10 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+type Code uint8
+
 const (
-	MARKET_CN = iota + 1
+	MARKET_CN Code = iota + 1
 	MARKET_HK
 	MARKET_US
 

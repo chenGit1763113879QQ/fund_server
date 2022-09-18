@@ -22,9 +22,9 @@ func getCategoryIndustries(market string) {
 	var industries []struct {
 		IndCode    string `json:"encode" bson:"_id"`
 		Symbol     string
-		MarketType uint8  `bson:"marketType"`
-		Type       uint8  `bson:"type"`
-		Name       string `json:"name"`
+		MarketType util.Code `bson:"marketType"`
+		Type       util.Code `bson:"type"`
+		Name       string    `json:"name"`
 	}
 	util.UnmarshalJSON(body, &industries, "data", "industries")
 
