@@ -129,12 +129,11 @@ func Md5Code(code string) string {
 }
 
 func IsChinese(str string) bool {
-	if len(str) == 0 {
-		return false
+	for _, r := range str {
+		// only check first character
+		return unicode.Is(unicode.Han, r)
 	}
-	// only check first character
-	r := rune(str[0])
-	return unicode.Is(unicode.Han, r)
+	return false
 }
 
 func UnmarshalJSON(body []byte, data any, path ...interface{}) error {

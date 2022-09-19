@@ -6,8 +6,6 @@ import (
 	"fund/util"
 	"sync"
 	"time"
-
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -24,28 +22,34 @@ var (
 
 func init() {
 	getMarketStatus()
-	log.Info().Msg("init market status success.")
-
 	for _, p := range Markets {
 		go getRealStock(p)
 	}
 
+	// news
 	util.GoJob(getNews, time.Minute, time.Second*3)
 
+	// market status
 	util.GoJob(getMarketStatus, time.Second)
 
+	// industry
 	util.GoJob(func() {
-		// industry
 		for _, p := range Markets {
 			getCategoryIndustries(p.StrMarket)
 			getIndustry(p)
 		}
-		// kline
+	}, time.Hour*12, time.Second*5)
+
+	// kline & predict
+	util.GoJob(func() {
 		InitKlines()
 
-		// backtest
-		loadKlines()
-		WinRate()
-		PredictStock()
+		// loadKlines()
+
+		// WinRate()
+		// PredictStock()
+
+		// cache.KlineMap.Clear()
+
 	}, time.Hour*12, time.Second*5)
 }

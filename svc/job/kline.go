@@ -33,9 +33,12 @@ func InitKlines() {
 		// get kline
 		klines := getKline(symbol, id)
 
-		coll := db.KlineDB.Collection(util.Md5Code(id))
-		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-		coll.RemoveAll(ctx, bson.M{"code": id})
+		coll := db.TimeSeriesCollection(util.Md5Code(id))
+		if coll == nil {
+			return
+		}
+		coll.EnsureIndexes(ctx, nil, []string{"meta.code"})
+		coll.RemoveAll(ctx, bson.M{"meta.code": id})
 		coll.InsertMany(ctx, klines)
 
 		db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*12)
@@ -100,7 +103,7 @@ func getKline(symbol string, Id string) []model.Kline {
 
 	// set
 	for i := range klines {
-		klines[i].Code = Id
+		klines[i].Meta.Code = Id
 		timeStr := time.Unix(klines[i].TimeStamp/1000, 0).Format("2006/01/02")
 		klines[i].Time, _ = time.Parse("2006/01/02", timeStr)
 	}
@@ -110,24 +113,18 @@ func getKline(symbol string, Id string) []model.Kline {
 
 func loadKlines() {
 	log.Debug().Msg("kline start init")
-	t, _ := time.Parse("2006/01/02", "2017/01/01")
-
-	// load stocks
-	var id []string
-	db.Stock.Find(ctx, bson.M{
-		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK, "mc": bson.M{"$gt": 50 * math.Pow(10, 8)},
-	}).Distinct("_id", &id)
+	t, _ := time.Parse("2006/01/02", "2017/09/01")
 
 	// run
 	p := util.NewPool()
-	for _, code := range id {
+	for _, code := range getCNStocks() {
 		p.NewTask(func(strs ...string) {
 			id := strs[0]
 			var data []model.Kline
 
 			// get kline
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
-				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
+				Match(bson.M{"meta.code": id, "time": bson.M{"$gt": t}}).
 				Sort(bson.M{"time": 1}).Do()).All(&data)
 			if data != nil {
 				cache.KlineMap.Store(id, data)

@@ -15,8 +15,10 @@ const (
 	ARG_WINRATE = "winner_rate"
 )
 
+type BACK_FUNC func(k model.Kline) bool
+
 // run back test
-func runBackTest(backType string, arg float64, argName string, buy func(k model.Kline) bool, sell func(k model.Kline) bool) {
+func runBackTest(backType string, arg float64, argName string, buy BACK_FUNC, sell BACK_FUNC) {
 	// init collection
 	coll := db.BackDB.Collection(backType)
 	coll.EnsureIndexes(ctx, []string{"code,arg"}, nil)

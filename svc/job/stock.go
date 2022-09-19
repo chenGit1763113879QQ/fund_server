@@ -5,6 +5,7 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
+	"math"
 	"strings"
 	"time"
 
@@ -27,31 +28,31 @@ func getRealStock(m *model.Market) {
 			continue
 		}
 
-		var data []model.Stock
+		var data []*model.Stock
 		util.UnmarshalJSON(body, &data, "data", "list")
 
 		bulk := db.Stock.Bulk()
 
-		for i := range data {
-			data[i].CalData(m)
+		for _, s := range data {
+			s.CalData(m)
 
-			if data[i].Price > 0 {
+			if s.Price > 0 {
 				// update db
-				bulk.UpdateId(data[i].Id, bson.M{"$set": data[i]})
+				bulk.UpdateId(s.Id, bson.M{"$set": s})
 
 				// insert db
 				if freq == 2 {
-					db.Stock.InsertOne(ctx, data[i])
+					db.Stock.InsertOne(ctx, s)
 				}
 			}
 		}
 
-		go bulk.Run(ctx)
-		updateMinute(data, m)
+		bulk.Run(ctx)
+		go updateMinute(data, m)
+		go getIndustry(m)
 
 		if freq >= 1 {
 			go getDistribution(m)
-			go getIndustry(m)
 
 			if m.Market == util.MARKET_CN {
 				go getMainFlow()
@@ -69,15 +70,15 @@ func getRealStock(m *model.Market) {
 	}
 }
 
-func updateMinute(s []model.Stock, m *model.Market) {
+func updateMinute(s []*model.Stock, m *model.Market) {
 	tradeTime := m.TradeTime.Format("2006/01/02 15:04")
 	date := strings.Split(tradeTime, " ")[0]
 
 	newTime, _ := time.Parse("2006/01/02 15:04", tradeTime)
 
+	coll := db.MinuteDB.Collection(date)
 	if m.FreqIsZero() {
-		db.MinuteDB.CreateCollection(ctx, date)
-		db.MinuteDB.Collection(date).EnsureIndexes(ctx, []string{"_id.code,_id.time"}, nil)
+		coll.EnsureIndexes(ctx, []string{"_id.code,_id.time"}, nil)
 	}
 
 	a := time.Now()
@@ -85,13 +86,13 @@ func updateMinute(s []model.Stock, m *model.Market) {
 		return
 	}
 
-	bulk := db.MinuteDB.Collection(date).Bulk()
+	bulk := coll.Bulk()
 	for _, i := range s {
 		if i.Price > 0 {
 			bulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
 				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg,
-					"main_net": i.MainNet},
+					"main_net": i.MainNet, "minute": newTime.Minute()},
 			)
 		}
 	}
@@ -144,4 +145,12 @@ func getNews() {
 			Tag:      codes,
 		})
 	}
+}
+
+func getCNStocks() []string {
+	var id []string
+	db.Stock.Find(ctx, bson.M{
+		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK, "mc": bson.M{"$gt": 50 * math.Pow(10, 8)},
+	}).Distinct("_id", &id)
+	return id
 }

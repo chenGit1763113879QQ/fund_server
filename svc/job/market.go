@@ -93,7 +93,7 @@ func GetTradeTime(code string) time.Time {
 	splits := strings.Split(code, ".")
 	if len(splits) == 2 {
 		switch splits[1] {
-		case "SH", "SZ", "BJ", "TI":
+		case "SH", "SZ", "BJ":
 			return Markets[0].TradeTime
 		case "HK":
 			return Markets[1].TradeTime
@@ -102,4 +102,19 @@ func GetTradeTime(code string) time.Time {
 		}
 	}
 	return time.Unix(0, 0)
+}
+
+func GetCodeMarket(code string) util.Code {
+	splits := strings.Split(code, ".")
+	if len(splits) == 2 {
+		switch splits[1] {
+		case "SH", "SZ", "BJ":
+			return util.MARKET_CN
+		case "HK":
+			return util.MARKET_HK
+		case "US":
+			return util.MARKET_US
+		}
+	}
+	return 0
 }

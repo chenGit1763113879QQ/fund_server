@@ -1,46 +1,20 @@
 package job
 
 import (
+	"fmt"
 	"fund/cache"
 	"fund/db"
 	"fund/model"
-	"fund/util"
-	"math"
 	"time"
 
-	"github.com/go-gota/gota/dataframe"
 	"github.com/go-gota/gota/series"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func timeHist(k []model.Kline) []time.Time {
-	arr := make([]time.Time, len(k))
-	for i := range k {
-		arr[i] = k[i].Time
-	}
-	return arr
-}
-
-func closeHist(k []model.Kline) []float64 {
-	arr := make([]float64, len(k))
-	for i := range k {
-		arr[i] = k[i].Close
-	}
-	return arr
-}
-
 func PredictStock() {
-	db.Predict.DropCollection(ctx)
-
-	// load stocks
-	var id []string
-	db.Stock.Find(ctx, bson.M{
-		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK, "mc": bson.M{"$gt": 50 * math.Pow(10, 8)},
-	}).Distinct("_id", &id)
-
-	// run
-	for _, k := range id {
+	for _, k := range getCNStocks() {
+		fmt.Println(k)
 		predict(k, 30)
 		predict(k, 60)
 	}
@@ -48,51 +22,60 @@ func PredictStock() {
 }
 
 func predict(code string, days int) {
+	// cache
+	exist, _ := db.LimitDB.Exists(ctx, "predict:"+code).Result()
+	if exist > 0 {
+		return
+	}
+
 	src := cache.KlineMap.Load(code)
 	if len(src) < days {
 		return
 	}
 
-	// matrix to array
-	arr := closeHist(src)[len(src)-days:]
-	oneness(arr)
+	var matchClose []float64
+
+	// oneness src
+	srcClose := closeIndex(src, len(src)-days, len(src))
+	oneness(srcClose)
 
 	// results
-	results := make([]map[string]any, 0)
+	bulk := db.Predict.Bulk()
 
 	cache.KlineMap.Range(func(matchCode string, match []model.Kline) {
 		if len(match) < days {
 			return
 		}
-
-		dates := timeHist(match)
-		closeLine := closeHist(match)
-
 		// rolling window
 		for i := 0; i+days+5 < len(match); i++ {
 
-			// matrix
-			mat := make([]float64, days)
-			copy(mat, closeLine[i:i+days])
+			// oneness match
+			matchClose = closeIndex(match, i, i+days)
+			oneness(matchClose)
 
-			oneness(mat)
-			res := std(arr, mat)
+			// cal std
+			res := std(srcClose, matchClose)
 
-			if res < 0.25 {
-				results = append(results, map[string]any{
-					"p_code": code, "m_code": matchCode,
-					"m_date": dates[i], "m_period": days, "std": res / float64(days),
+			if res < 0.1 {
+				bulk.InsertOne(bson.M{
+					"src_code": code, "match_code": matchCode,
+					"match_date": match[i].Time, "period": days, "std": res,
 				})
 			}
 		}
 	})
+	bulk.RemoveAll(bson.M{"src_code": code})
+	bulk.Run(ctx)
 
-	res := dataframe.LoadMaps(results).Arrange(dataframe.Order{Colname: "std", Reverse: false})
-	if res.Nrow() > 5 {
-		db.Predict.InsertMany(ctx, res.Maps()[0:5])
-	} else {
-		db.Predict.InsertMany(ctx, res.Maps())
+	db.LimitDB.Set(ctx, "predict:"+code, "1", time.Hour*12)
+}
+
+func closeIndex(k []model.Kline, start int, end int) []float64 {
+	arr := make([]float64, end-start)
+	for i := start; i < end; i++ {
+		arr[i-start] = k[i].Close
 	}
+	return arr
 }
 
 func oneness(arr []float64) {

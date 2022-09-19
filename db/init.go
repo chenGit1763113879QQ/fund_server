@@ -6,7 +6,9 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/qiniu/qmgo"
+	qmgoOptions "github.com/qiniu/qmgo/options"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // 生产环境
@@ -77,4 +79,23 @@ func init() {
 	LimitDB = redis.NewClient(&redis.Options{
 		Addr: redisHost, DB: 1,
 	})
+}
+
+func TimeSeriesCollection(name string) *qmgo.Collection {
+	// timeSeries option
+	tsOpt := new(options.TimeSeriesOptions)
+	tsOpt.SetTimeField("time").
+		SetGranularity("hours").
+		SetMetaField("meta")
+
+	// create collection option
+	collOpt := qmgoOptions.CreateCollectionOptions{
+		CreateCollectionOptions: options.CreateCollection(),
+	}
+	collOpt.SetTimeSeriesOptions(tsOpt)
+
+	// create
+	KlineDB.CreateCollection(ctx, name, collOpt)
+
+	return KlineDB.Collection(name)
 }

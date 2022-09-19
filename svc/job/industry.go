@@ -20,11 +20,13 @@ func getCategoryIndustries(market string) {
 	body, _ := util.GetAndRead(url)
 
 	var industries []struct {
-		IndCode    string `json:"encode" bson:"_id"`
-		Symbol     string
 		MarketType util.Code `bson:"marketType"`
 		Type       util.Code `bson:"type"`
-		Name       string    `json:"name"`
+		Code       string    `json:"encode" bson:"_id"`
+		Symbol     string
+		Name       string `json:"name"`
+		Pinyin     string `bson:"pinyin"`
+		LazyPinyin string `bson:"lazy_pinyin"`
 	}
 	util.UnmarshalJSON(body, &industries, "data", "industries")
 
@@ -42,37 +44,50 @@ func getCategoryIndustries(market string) {
 	bulk := db.Stock.Bulk()
 
 	for _, ids := range industries {
-		for _, stk := range stock {
-			if ids.IndCode == stk.IndCode {
+		// set industry
+		ids.Type = util.TYPE_IDS
+		ids.Symbol = ids.Code
+		switch market {
+		case "CN":
+			ids.MarketType = util.MARKET_CN
 
+		case "HK":
+			ids.MarketType = util.MARKET_HK
+
+		case "US":
+			ids.MarketType = util.MARKET_US
+		}
+
+		// add pinyin
+		if util.IsChinese(ids.Name) {
+			for _, c := range pinyin.LazyPinyin(ids.Name, model.PinyinArg) {
+				ids.Pinyin += c
+				ids.LazyPinyin += string(c[0])
+			}
+		}
+
+		// save
+		db.Stock.InsertOne(ctx, ids)
+		bulk.UpdateId(ids.Code, bson.M{"$set": ids})
+
+		// members
+		for _, stk := range stock {
+			if ids.Code == stk.IndCode {
 				switch market {
 				case "CN":
-					ids.MarketType = util.MARKET_CN
 					stk.Code = fmt.Sprintf("%s.%s", stk.Code[2:], stk.Code[0:2])
 
 				case "HK":
-					ids.MarketType = util.MARKET_HK
 					stk.Code += ".HK"
 
 				case "US":
-					ids.MarketType = util.MARKET_US
 					stk.Code += ".US"
 				}
 
-				ids.Type = util.TYPE_IDS
-				ids.Symbol = ids.IndCode
-
-				db.Stock.InsertOne(ctx, ids)
-
-				// industry
-				bulk.UpdateId(ids.IndCode, bson.M{
-					"$set": bson.M{
-						"name": ids.Name, "marketType": ids.MarketType, "type": ids.Type,
-					},
-					"$addToSet": bson.M{"members": stk.Code},
-				})
-				// member
-				bulk.UpdateId(stk.Code, bson.M{"$addToSet": bson.M{"bk": ids.IndCode}})
+				// members
+				bulk.UpdateId(ids.Code, bson.M{"$addToSet": bson.M{"members": stk.Code}})
+				// bk
+				bulk.UpdateId(stk.Code, bson.M{"$addToSet": bson.M{"bk": ids.Code}})
 			}
 		}
 	}
@@ -84,10 +99,9 @@ func getIndustry(m *model.Market) {
 	var data []model.Industry
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"type": util.TYPE_IDS}).
+		Match(bson.M{"marketType": m.Market, "type": util.TYPE_IDS}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
-			"c":         bson.M{"name": 1, "pct_chg": 1},
 			"name":      "$name",
 			"followers": bson.M{"$sum": "$c.followers"},
 			"pct_chg":   bson.M{"$avg": "$c.pct_chg"},
@@ -111,37 +125,15 @@ func getIndustry(m *model.Market) {
 	newTime, _ := time.Parse("2006/01/02 15:04", tradeTime)
 
 	minBulk := db.MinuteDB.Collection(date).Bulk()
-
-	pinyinArg := pinyin.NewArgs()
-
 	for _, i := range data {
-		i.PctLeader.PctChg = -100
-
-		// leader stock
-		for _, stk := range i.ConnList {
-			if stk.PctChg > i.PctLeader.PctChg {
-				i.PctLeader = stk
-			}
-		}
-		i.ConnList = nil
-
-		if m.Freq() == 2 {
-			// add pinyin
-			if util.IsChinese(i.Name) {
-				for _, c := range pinyin.LazyPinyin(i.Name, pinyinArg) {
-					i.Pinyin += c
-					i.LazyPinyin += string(c[0])
-				}
-			}
-		}
-
 		bulk.UpdateId(i.Id, bson.M{"$set": i})
 
 		// minute data
 		if m.Status {
 			minBulk.UpsertId(
 				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"pct_chg": i.PctChg, "vol": i.Vol, "main_net": i.MainNet},
+				bson.M{"pct_chg": i.PctChg, "vol": i.Vol,
+					"main_net": i.MainNet, "minute": newTime.Minute()},
 			)
 		}
 	}

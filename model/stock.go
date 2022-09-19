@@ -9,7 +9,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var pinyinArg = pinyin.NewArgs()
+var PinyinArg = pinyin.NewArgs()
+
+func init() {
+	PinyinArg.Fallback = func(r rune, a pinyin.Args) []string {
+		return []string{string(r)}
+	}
+}
 
 type Market struct {
 	Market util.Code
@@ -34,12 +40,6 @@ type Index struct {
 	} `json:"market"`
 
 	Stock Stock `json:"quote"`
-}
-
-func init() {
-	pinyinArg.Fallback = func(r rune, a pinyin.Args) []string {
-		return []string{string(r)}
-	}
 }
 
 func (m *Market) ReSet() {
@@ -117,15 +117,11 @@ type Stock struct {
 }
 
 type Industry struct {
-	MarketType uint8 `bson:"marketType,omitempty"`
-	Type       uint8 `bson:"type,omitempty"`
-	Vol        uint  `bson:"vol"`
-	Followers  uint  `bson:"followers"`
+	Vol       uint `bson:"vol"`
+	Followers uint `bson:"followers"`
 
-	Id         string `bson:"_id"`
-	Name       string `bson:"name"`
-	Pinyin     string `bson:"pinyin,omitempty"`
-	LazyPinyin string `bson:"lazy_pinyin,omitempty"`
+	Id   string `bson:"_id"`
+	Name string `bson:"name"`
 
 	PctChg  float64 `bson:"pct_chg"`
 	Pb      float64 `bson:"pb"`
@@ -137,29 +133,18 @@ type Industry struct {
 	Mc      float64 `bson:"mc"`
 	Fmc     float64 `bson:"fmc"`
 	MainNet float64 `bson:"main_net"`
-
-	ConnList  []Stk `bson:"c,omitempty"`
-	PctLeader Stk   `bson:"pct_leader"`
-}
-
-// 成分股
-type Stk struct {
-	Code   string  `bson:"code"`
-	Name   string  `bson:"name"`
-	PctChg float64 `bson:"pct_chg"`
 }
 
 func (s *Stock) CalData(m *Market) {
 	if m.Freq() == 2 {
 		// add pinyin
 		if util.IsChinese(s.Name) {
-			for _, c := range pinyin.LazyPinyin(s.Name, pinyinArg) {
+			for _, c := range pinyin.LazyPinyin(s.Name, PinyinArg) {
 				s.Pinyin += c
 				s.LazyPinyin += string(c[0])
 			}
 		}
 	}
-
 	s.Id = s.Symbol
 	s.MarketType = m.Market
 	s.Type = m.Type
@@ -224,7 +209,10 @@ type Kline struct {
 
 	Time      time.Time `bson:"time" csv:"-"`
 	TimeStamp int64     `bson:"-" csv:"timestamp"`
-	Code      string    `bson:"code"`
+
+	Meta struct {
+		Code string `bson:"code"`
+	} `bson:"meta"`
 
 	Open   float64 `csv:"open"`
 	High   float64 `csv:"high"`

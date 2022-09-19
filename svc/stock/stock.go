@@ -126,8 +126,8 @@ func Search(c *gin.Context) {
 
 func AllBKDetails(c *gin.Context) {
 	var req struct {
-		Market uint8  `form:"market" binding:"required"`
-		Sort   string `form:"sort" binding:"required"`
+		Market util.Code `form:"market" binding:"required"`
+		Sort   string    `form:"sort" binding:"required"`
 	}
 	if err := c.ShouldBind(&req); err != nil {
 		midware.Error(c, err)
@@ -137,6 +137,7 @@ func AllBKDetails(c *gin.Context) {
 	var data []bson.M
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"marketType": req.Market, "type": util.TYPE_IDS}).
+		Sort(bson.M{req.Sort: -1}).Limit(50).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
 			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "followers": 1,
@@ -144,7 +145,7 @@ func AllBKDetails(c *gin.Context) {
 				"_id": 1, "name": 1, "price": 1, "amount": 1, "pct_chg": 1,
 				"mc": 1, "followers": 1,
 			},
-		}).Sort(bson.M{req.Sort: -1}).Limit(50).Do()).All(&data)
+		}).Do()).All(&data)
 
 	midware.Success(c, data)
 }

@@ -45,21 +45,22 @@ func GetSimpleChart(code string, chartType string) any {
 	switch chartType {
 	case "minute":
 		var arr []struct {
-			Time   int64   `json:"time"`
 			PctChg float64 `json:"value" bson:"pct_chg"`
-			Id     struct {
-				Time int64
-			} `json:"-" bson:"_id"`
 		}
 
 		db.MinuteDB.Collection(job.GetTradeTime(code).Format("2006/01/02")).
-			Find(ctx, bson.M{"_id.code": code}).All(&arr)
+			Find(ctx, bson.M{"_id.code": code, "minute": bson.M{"$mod": bson.A{2, 0}}}).All(&arr)
 
-		for i := range arr {
-			arr[i].Time = arr[i].Id.Time
+		switch job.GetCodeMarket(code) {
+		case util.MARKET_CN:
+			data.Total = 240 / 2
+
+		case util.MARKET_HK:
+			data.Total = 310 / 2
+
+		case util.MARKET_US:
+			data.Total = 390 / 2
 		}
-
-		data.Total = 240
 		data.Value = arr
 		data.Open = 0
 		if len(arr) > 0 {
@@ -68,14 +69,13 @@ func GetSimpleChart(code string, chartType string) any {
 
 	case "60day":
 		var arr []struct {
-			Time  time.Time `json:"time"`
-			Close float64   `json:"value" bson:"close"`
+			Close float64 `json:"value" bson:"close"`
 		}
 
 		t, _ := time.Parse("2006/01/02", "2022/01/01")
 
 		db.KlineDB.Collection(util.Md5Code(code)).
-			Find(ctx, bson.M{"code": code, "time": bson.M{"$gt": t}}).
+			Find(ctx, bson.M{"meta.code": code, "time": bson.M{"$gt": t}}).
 			Sort("-time").Select(bson.M{"close": 1, "time": 1}).
 			Limit(100).All(&arr)
 
@@ -120,9 +120,9 @@ func GetKline(c *gin.Context) {
 		case "y", "q", "m":
 			req.StartDate = "2012/01/01"
 		case "w":
-			req.StartDate = "2015/01/01"
+			req.StartDate = "2016/01/01"
 		default:
-			req.StartDate = "2019/01/01"
+			req.StartDate = "2020/09/01"
 		}
 	}
 
@@ -130,7 +130,7 @@ func GetKline(c *gin.Context) {
 
 	var data []bson.M
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
+		Match(bson.M{"meta.code": req.Code, "time": bson.M{"$gt": t}}).
 		Group(bson.M{
 			"_id":           bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
 			"time":          bson.M{"$last": "$time"},
@@ -142,13 +142,12 @@ func GetKline(c *gin.Context) {
 			"vol":           bson.M{"$sum": "$vol"},
 			"amount":        bson.M{"$sum": "$amount"},
 			"pct_chg":       bson.M{"$sum": "$pct_chg"},
-			"tr":            bson.M{"$sum": "$tr"},
 			"balance":       bson.M{"$last": "$balance"},
 			"winner_rate":   bson.M{"$last": "$winner_rate"},
 			"hold_ratio_cn": bson.M{"$last": "$hold_ratio_cn"},
 			"net_vol_cn":    bson.M{"$sum": "$net_vol_cn"},
-		}).
-		Sort(bson.M{"time": 1}).Do()).All(&data)
+		}).Sort(bson.M{"time": 1}).
+		Do()).All(&data)
 
 	if req.Head > 0 {
 		midware.Success(c, data[:req.Head])
