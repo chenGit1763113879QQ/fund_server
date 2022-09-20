@@ -102,7 +102,6 @@ func getIndustry(m *model.Market) {
 		Match(bson.M{"marketType": m.Market, "type": util.TYPE_IDS}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
-			"name":      "$name",
 			"followers": bson.M{"$sum": "$c.followers"},
 			"pct_chg":   bson.M{"$avg": "$c.pct_chg"},
 			"main_net":  bson.M{"$sum": "$c.main_net"},
@@ -125,6 +124,7 @@ func getIndustry(m *model.Market) {
 	newTime, _ := time.Parse("2006/01/02 15:04", tradeTime)
 
 	minBulk := db.MinuteDB.Collection(date).Bulk()
+
 	for _, i := range data {
 		bulk.UpdateId(i.Id, bson.M{"$set": i})
 

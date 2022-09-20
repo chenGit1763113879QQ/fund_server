@@ -3,7 +3,7 @@ module fund
 go 1.18
 
 require (
-	github.com/bytedance/sonic v1.4.0
+	github.com/bytedance/sonic v1.5.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.8.1
 	github.com/go-gota/gota v0.12.0
@@ -17,7 +17,7 @@ require (
 	github.com/qiniu/qmgo v1.1.2
 	github.com/rs/zerolog v1.28.0
 	go.mongodb.org/mongo-driver v1.10.2
-	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9
+	golang.org/x/time v0.0.0-20220920022843-2ce7c2934d45
 )
 
 require (
@@ -48,12 +48,12 @@ require (
 	github.com/xdg-go/scram v1.1.1 // indirect
 	github.com/xdg-go/stringprep v1.0.3 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
-	golang.org/x/arch v0.0.0-20220915211755-44deed04936c // indirect
-	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
+	golang.org/x/arch v0.0.0-20220919183040-2926576b28c0 // indirect
+	golang.org/x/crypto v0.0.0-20220919173607-35f4265a4bc0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
-	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect
+	golang.org/x/net v0.0.0-20220919232410-f2f64ebce3c1 // indirect
 	golang.org/x/sync v0.0.0-20220907140024-f12130a52804 // indirect
-	golang.org/x/sys v0.0.0-20220915200043-7b5979e65e41 // indirect
+	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gonum.org/v1/gonum v0.12.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

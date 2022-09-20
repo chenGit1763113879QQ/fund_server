@@ -120,8 +120,7 @@ type Industry struct {
 	Vol       uint `bson:"vol"`
 	Followers uint `bson:"followers"`
 
-	Id   string `bson:"_id"`
-	Name string `bson:"name"`
+	Id string `bson:"_id"`
 
 	PctChg  float64 `bson:"pct_chg"`
 	Pb      float64 `bson:"pb"`

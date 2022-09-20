@@ -39,17 +39,25 @@ func GetSimpleChart(code string, chartType string) any {
 		Total uint    `json:"total"`
 		Value any     `json:"value"`
 		Open  float64 `json:"open"`
-		Close float64 `json:"close"`
 	}
 
 	switch chartType {
 	case "minute":
 		var arr []struct {
+			Time   int64   `json:"time"`
 			PctChg float64 `json:"value" bson:"pct_chg"`
+			Id     struct {
+				Time int64
+			} `json:"-" bson:"_id"`
+		}
+
+		for i := range arr {
+			arr[i].Time = arr[i].Id.Time
 		}
 
 		db.MinuteDB.Collection(job.GetTradeTime(code).Format("2006/01/02")).
-			Find(ctx, bson.M{"_id.code": code, "minute": bson.M{"$mod": bson.A{2, 0}}}).All(&arr)
+			Find(ctx, bson.M{"_id.code": code, "minute": bson.M{"$mod": bson.A{2, 0}}}).
+			All(&arr)
 
 		switch job.GetCodeMarket(code) {
 		case util.MARKET_CN:
@@ -61,29 +69,26 @@ func GetSimpleChart(code string, chartType string) any {
 		case util.MARKET_US:
 			data.Total = 390 / 2
 		}
+
 		data.Value = arr
-		data.Open = 0
-		if len(arr) > 0 {
-			data.Close = arr[len(arr)-1].PctChg
-		}
 
 	case "60day":
 		var arr []struct {
-			Close float64 `json:"value" bson:"close"`
+			Time  time.Time `json:"time"`
+			Close float64   `json:"value" bson:"close"`
 		}
 
 		t, _ := time.Parse("2006/01/02", "2022/01/01")
 
 		db.KlineDB.Collection(util.Md5Code(code)).
 			Find(ctx, bson.M{"meta.code": code, "time": bson.M{"$gt": t}}).
-			Sort("-time").Select(bson.M{"close": 1, "time": 1}).
-			Limit(100).All(&arr)
+			Select(bson.M{"close": 1, "time": 1}).
+			Sort("-time").Limit(100).All(&arr)
 
 		data.Total = 100
 		data.Value = arr
 		if len(arr) > 0 {
 			data.Open = arr[len(arr)-1].Close
-			data.Close = arr[0].Close
 		}
 	}
 
