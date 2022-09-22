@@ -45,7 +45,7 @@ func NewTrade(code string, arg float64, argName string) *Trade {
 	}
 }
 
-func (t *Trade) Buy(k Kline) {
+func (t *Trade) Buy(k *Kline) {
 	tick := Tick{
 		Price: k.Close,
 		Time:  k.Time,
@@ -55,7 +55,7 @@ func (t *Trade) Buy(k Kline) {
 	t.ticks = append(t.ticks, tick)
 }
 
-func (t *Trade) Sell(k Kline) {
+func (t *Trade) Sell(k *Kline) {
 	length := len(t.ticks)
 	if length == 0 {
 		return

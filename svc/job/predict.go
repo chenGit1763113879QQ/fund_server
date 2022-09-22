@@ -42,7 +42,7 @@ func predict(code string, days int) {
 	// results
 	bulk := db.Predict.Bulk()
 
-	cache.KlineMap.Range(func(matchCode string, match []model.Kline) {
+	cache.KlineMap.Range(func(matchCode string, match []*model.Kline) {
 		if len(match) < days {
 			return
 		}
@@ -70,7 +70,7 @@ func predict(code string, days int) {
 	db.LimitDB.Set(ctx, "predict:"+code, "1", time.Hour*12)
 }
 
-func closeIndex(k []model.Kline, start int, end int) []float64 {
+func closeIndex(k []*model.Kline, start int, end int) []float64 {
 	arr := make([]float64, end-start)
 	for i := start; i < end; i++ {
 		arr[i-start] = k[i].Close

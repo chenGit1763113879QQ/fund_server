@@ -53,7 +53,7 @@ func InitKlines() {
 	log.Info().Msg("init kline success.")
 }
 
-func getKline(symbol string, Id string) []model.Kline {
+func getKline(symbol string, Id string) []*model.Kline {
 	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=1350000000000&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", symbol)
 	body, _ := util.XueQiuAPI(url)
 
@@ -65,7 +65,7 @@ func getKline(symbol string, Id string) []model.Kline {
 	}
 	util.UnmarshalJSON(body, &data)
 
-	klines := make([]model.Kline, len(data.Data.Item))
+	klines := make([]*model.Kline, len(data.Data.Item))
 
 	// reflect
 	typeof := reflect.TypeOf(model.Kline{})
@@ -77,7 +77,10 @@ func getKline(symbol string, Id string) []model.Kline {
 	}
 
 	for i, items := range data.Data.Item {
-		value := reflect.ValueOf(&klines[i]).Elem()
+		// declare
+		klines[i] = new(model.Kline)
+
+		value := reflect.ValueOf(klines[i]).Elem()
 
 		for colI, col := range data.Data.Column {
 			for tagI, tag := range tags {
@@ -120,7 +123,7 @@ func loadKlines() {
 	for _, code := range getCNStocks() {
 		p.NewTask(func(strs ...string) {
 			id := strs[0]
-			var data []model.Kline
+			var data []*model.Kline
 
 			// get kline
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().

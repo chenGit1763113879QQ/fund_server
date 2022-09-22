@@ -46,18 +46,11 @@ func GetSimpleChart(code string, chartType string) any {
 		var arr []struct {
 			Time   int64   `json:"time"`
 			PctChg float64 `json:"value" bson:"pct_chg"`
-			Id     struct {
-				Time int64
-			} `json:"-" bson:"_id"`
-		}
-
-		for i := range arr {
-			arr[i].Time = arr[i].Id.Time
 		}
 
 		db.MinuteDB.Collection(job.GetTradeTime(code).Format("2006/01/02")).
-			Find(ctx, bson.M{"_id.code": code, "minute": bson.M{"$mod": bson.A{2, 0}}}).
-			All(&arr)
+			Find(ctx, bson.M{"code": code, "minute": bson.M{"$mod": bson.A{2, 0}}}).
+			Sort("time").All(&arr)
 
 		switch job.GetCodeMarket(code) {
 		case util.MARKET_CN:
@@ -69,7 +62,6 @@ func GetSimpleChart(code string, chartType string) any {
 		case util.MARKET_US:
 			data.Total = 390 / 2
 		}
-
 		data.Value = arr
 
 	case "60day":
@@ -127,7 +119,7 @@ func GetKline(c *gin.Context) {
 		case "w":
 			req.StartDate = "2016/01/01"
 		default:
-			req.StartDate = "2020/09/01"
+			req.StartDate = "2020/06/01"
 		}
 	}
 

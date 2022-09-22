@@ -15,7 +15,7 @@ const (
 	ARG_WINRATE = "winner_rate"
 )
 
-type BACK_FUNC func(k model.Kline) bool
+type BACK_FUNC func(k *model.Kline) bool
 
 // run back test
 func runBackTest(backType string, arg float64, argName string, buy BACK_FUNC, sell BACK_FUNC) {
@@ -26,7 +26,7 @@ func runBackTest(backType string, arg float64, argName string, buy BACK_FUNC, se
 	coll.Remove(ctx, bson.M{"arg": arg, "arg_name": argName})
 	bulk := coll.Bulk()
 
-	cache.KlineMap.Range(func(id string, k []model.Kline) {
+	cache.KlineMap.Range(func(id string, k []*model.Kline) {
 		trade := model.NewTrade(id, arg, argName)
 		for i := range k {
 			if buy(k[i]) {
@@ -49,10 +49,10 @@ func WinRate() {
 
 		runBackTest(
 			TYPE_WINRATE, arg, ARG_WINRATE,
-			func(k model.Kline) bool {
+			func(k *model.Kline) bool {
 				return k.WinnerRate < 2.7 && k.Tr < 3.5 && k.Pe < 33
 			},
-			func(k model.Kline) bool {
+			func(k *model.Kline) bool {
 				return k.WinnerRate > arg
 			},
 		)

@@ -77,8 +77,8 @@ func updateMinute(s []*model.Stock, m *model.Market) {
 	newTime, _ := time.Parse("2006/01/02 15:04", tradeTime)
 
 	coll := db.MinuteDB.Collection(date)
-	if m.FreqIsZero() {
-		coll.EnsureIndexes(ctx, []string{"_id.code,_id.time"}, nil)
+	if m.Freq() == 2 {
+		coll.EnsureIndexes(ctx, nil, []string{"code,minute"})
 	}
 
 	a := time.Now()
@@ -87,14 +87,15 @@ func updateMinute(s []*model.Stock, m *model.Market) {
 	}
 
 	bulk := coll.Bulk()
+
 	for _, i := range s {
-		if i.Price > 0 {
-			bulk.UpsertId(
-				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol, "avg": i.Avg,
-					"main_net": i.MainNet, "minute": newTime.Minute()},
-			)
-		}
+		id := fmt.Sprintf("%s-%s", i.Id, tradeTime)
+		bulk.UpsertId(
+			id,
+			bson.M{"_id": id, "code": i.Id, "time": newTime.Unix(),
+				"price": i.Price, "pct_chg": i.PctChg, "vol": i.Vol,
+				"avg": i.Avg, "main_net": i.MainNet, "minute": newTime.Minute()},
+		)
 	}
 	go bulk.Run(ctx)
 }

@@ -206,12 +206,12 @@ type Kline struct {
 	Ps  float64 `bson:",omitempty" csv:"ps"`
 	Pcf float64 `bson:",omitempty" csv:"pcf"`
 
-	Time      time.Time `bson:"time" csv:"-"`
+	Time      time.Time `csv:"-"`
 	TimeStamp int64     `bson:"-" csv:"timestamp"`
 
 	Meta struct {
-		Code string `bson:"code"`
-	} `bson:"meta"`
+		Code string
+	}
 
 	Open   float64 `csv:"open"`
 	High   float64 `csv:"high"`

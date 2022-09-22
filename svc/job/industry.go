@@ -19,7 +19,7 @@ func getCategoryIndustries(market string) {
 	url := fmt.Sprintf("https://xueqiu.com/service/screener/industries?category=%s", market)
 	body, _ := util.GetAndRead(url)
 
-	var industries []struct {
+	var industries []*struct {
 		MarketType util.Code `bson:"marketType"`
 		Type       util.Code `bson:"type"`
 		Code       string    `json:"encode" bson:"_id"`
@@ -34,7 +34,7 @@ func getCategoryIndustries(market string) {
 	url = fmt.Sprintf("https://xueqiu.com/service/screener/screen?category=%s&areacode=&indcode=&size=6000&only_count=0", market)
 	body, _ = util.GetAndRead(url)
 
-	var stock []struct {
+	var stock []*struct {
 		Code    string `json:"symbol"`
 		IndCode string `json:"indcode"`
 	}
@@ -96,7 +96,7 @@ func getCategoryIndustries(market string) {
 }
 
 func getIndustry(m *model.Market) {
-	var data []model.Industry
+	var data []*model.Industry
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"marketType": m.Market, "type": util.TYPE_IDS}).
@@ -130,9 +130,11 @@ func getIndustry(m *model.Market) {
 
 		// minute data
 		if m.Status {
+			id := fmt.Sprintf("%s-%s", i.Id, tradeTime)
 			minBulk.UpsertId(
-				bson.M{"code": i.Id, "time": newTime.Unix()},
-				bson.M{"pct_chg": i.PctChg, "vol": i.Vol,
+				id,
+				bson.M{"_id": id, "code": i.Id, "time": newTime.Unix(),
+					"pct_chg": i.PctChg, "vol": i.Vol,
 					"main_net": i.MainNet, "minute": newTime.Minute()},
 			)
 		}

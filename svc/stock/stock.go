@@ -21,12 +21,12 @@ const (
 
 var (
 	ctx     = context.Background()
-	listOpt = bson.M{"pinyin": 0, "lazy_pinyin": 0, "members": 0}
+	listOpt = bson.M{"members": 0}
 )
 
 func GetStockDetail(code string) bson.M {
 	var data bson.M
-	db.Stock.Find(ctx, bson.M{"_id": code}).Select(bson.M{"members": 0, "pinyin": 0}).One(&data)
+	db.Stock.Find(ctx, bson.M{"_id": code}).Select(listOpt).One(&data)
 
 	if data != nil {
 		var bk []bson.M
@@ -103,25 +103,29 @@ func GetStockList(c *gin.Context) {
 
 func Search(c *gin.Context) {
 	input := c.Query("input") + ".*"
-	data := make([]bson.M, 0)
+
+	var data struct {
+		Arts  []bson.M `json:"arts"`
+		Stock []bson.M `json:"stock"`
+	}
 
 	db.Stock.Find(ctx, bson.M{
 		"$or": bson.A{
 			// regex pattern
 			bson.M{"_id": bson.M{"$regex": input, "$options": "i"}},
 			bson.M{"name": bson.M{"$regex": input, "$options": "i"}},
+
 			// allow pinyin
 			bson.M{"lazy_pinyin": bson.M{"$regex": input, "$options": "i"}},
 			bson.M{"pinyin": bson.M{"$regex": input, "$options": "i"}},
 		},
-	}).Select(listOpt).Sort("marketType", "-type", "-amount").Limit(10).All(&data)
+	}).Select(listOpt).Sort("marketType", "-type", "-amount").Limit(10).All(&data.Stock)
 
 	// articles
-	arts := make([]bson.M, 0)
 	db.Article.Find(ctx, bson.M{"title": bson.M{"$regex": input, "$options": "i"}}).
-		Sort("-createAt").Limit(8).All(&arts)
+		Sort("-createAt").Limit(8).All(&data.Arts)
 
-	midware.Success(c, bson.M{"stock": data, "arts": arts})
+	midware.Success(c, data)
 }
 
 func AllBKDetails(c *gin.Context) {
@@ -134,7 +138,7 @@ func AllBKDetails(c *gin.Context) {
 		return
 	}
 
-	var data []bson.M
+	data := make([]bson.M, 0)
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"marketType": req.Market, "type": util.TYPE_IDS}).
 		Sort(bson.M{req.Sort: -1}).Limit(50).
@@ -153,16 +157,17 @@ func AllBKDetails(c *gin.Context) {
 func PredictKline(c *gin.Context) {
 	data := make([]bson.M, 0)
 	db.Predict.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"预测股票": c.Query("code")}).
-		Sort(bson.M{"标准差": -1}).
+		Match(bson.M{"p_code": c.Query("code")}).
+		Sort(bson.M{"std": -1}).
 		Limit(10).
-		Lookup("stock", "预测股票", "_id", "预测股票").
-		Lookup("stock", "匹配股票", "_id", "匹配股票").
+		Lookup("stock", "p_code", "_id", "p_code").
+		Lookup("stock", "m_code", "_id", "m_code").
 		Project(bson.M{
-			"_id": 0, "匹配天数": 1, "标准差": 1, "匹配日期": 1,
-			"预测股票": bson.M{"_id": 1, "name": 1}, "匹配股票": bson.M{"_id": 1, "name": 1},
+			"_id": 0, "m_days": 1, "std": 1, "m_date": 1,
+			"p_code": bson.M{"_id": 1, "name": 1},
+			"m_code": bson.M{"_id": 1, "name": 1},
 		}).
-		Unwind("$预测股票").
-		Unwind("$匹配股票").Do()).All(&data)
+		Unwind("$p_code").Unwind("$m_code").Do()).All(&data)
+
 	midware.Success(c, data)
 }
