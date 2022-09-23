@@ -21,16 +21,10 @@ func GetMinute(code string) any {
 		MainNet float64 `json:"main_net"`
 		Time    int64   `json:"time"`
 		Vol     int64   `json:"vol"`
-		Id      struct {
-			Time int64
-		} `json:"-" bson:"_id"`
 	}
 
-	db.MinuteDB.Collection(job.GetTradeTime(code).Format("2006/01/02")).
-		Find(ctx, bson.M{"_id.code": code}).All(&data)
-	for i := range data {
-		data[i].Time = data[i].Id.Time
-	}
+	db.MinuteDB.Collection(job.GetMarket(code).ParseTradeDate()).
+		Find(ctx, bson.M{"code": code}).All(&data)
 	return data
 }
 
@@ -48,11 +42,16 @@ func GetSimpleChart(code string, chartType string) any {
 			PctChg float64 `json:"value" bson:"pct_chg"`
 		}
 
-		db.MinuteDB.Collection(job.GetTradeTime(code).Format("2006/01/02")).
+		m := job.GetMarket(code)
+		if m == nil {
+			return nil
+		}
+
+		db.MinuteDB.Collection(m.ParseTradeDate()).
 			Find(ctx, bson.M{"code": code, "minute": bson.M{"$mod": bson.A{2, 0}}}).
 			Sort("time").All(&arr)
 
-		switch job.GetCodeMarket(code) {
+		switch m.Market {
 		case util.MARKET_CN:
 			data.Total = 240 / 2
 

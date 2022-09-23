@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/gocarina/gocsv"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 // In slice
@@ -51,7 +53,7 @@ func GetAndRead(url string) ([]byte, error) {
 func XueQiuAPI(url string) ([]byte, error) {
 	// add token
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
-	req.Header.Add("cookie", "xq_a_token=80b283f898285a9e82e2e80cf77e5a4051435344")
+	req.Header.Add("cookie", viper.GetString("xq_token"))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -69,7 +71,7 @@ func TushareApi(api string, params any, fields any, val any) error {
 	// set params
 	req := map[string]any{
 		"api_name": api,
-		"token":    "8dbaa93be7f8d09210ca9cb0843054417e2820203201c0f3f7643410",
+		"token":    viper.GetString("ts_token"),
 	}
 	if params != nil {
 		req["params"] = params
@@ -125,7 +127,8 @@ func TushareApi(api string, params any, fields any, val any) error {
 func Md5Code(code string) string {
 	m := md5.New()
 	m.Write([]byte(code))
-	return hex.EncodeToString(m.Sum(nil))[0:2]
+	val := hex.EncodeToString(m.Sum(nil))
+	return fmt.Sprintf("%X%c", val[0]%8, val[1])
 }
 
 func IsChinese(str string) bool {

@@ -49,8 +49,8 @@ func AddGroup(c *gin.Context) {
 		}
 	}
 
-	if len(g.Groups) >= 6 {
-		midware.Error(c, errors.New("最多创建六个分组"))
+	if len(g.Groups) > 10 {
+		midware.Error(c, errors.New("达到分组上限"))
 		return
 	}
 

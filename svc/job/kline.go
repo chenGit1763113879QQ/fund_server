@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -34,14 +35,11 @@ func InitKlines() {
 		klines := getKline(symbol, id)
 
 		coll := db.TimeSeriesCollection(util.Md5Code(id))
-		if coll == nil {
-			return
-		}
 		coll.EnsureIndexes(ctx, nil, []string{"meta.code"})
 		coll.RemoveAll(ctx, bson.M{"meta.code": id})
 		coll.InsertMany(ctx, klines)
 
-		db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*12)
+		db.LimitDB.Set(ctx, "kline:"+id, 1, viper.GetDuration("kline.update.duration"))
 	}
 
 	p := util.NewPool(4)

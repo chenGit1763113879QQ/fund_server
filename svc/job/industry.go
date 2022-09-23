@@ -133,7 +133,7 @@ func getIndustry(m *model.Market) {
 			id := fmt.Sprintf("%s-%s", i.Id, tradeTime)
 			minBulk.UpsertId(
 				id,
-				bson.M{"_id": id, "code": i.Id, "time": newTime.Unix(),
+				bson.M{"code": i.Id, "time": newTime.Unix(),
 					"pct_chg": i.PctChg, "vol": i.Vol,
 					"main_net": i.MainNet, "minute": newTime.Minute()},
 			)

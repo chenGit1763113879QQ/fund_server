@@ -17,20 +17,6 @@ func init() {
 	}
 }
 
-type Market struct {
-	Market util.Code
-	Type   util.Code
-	count  uint8
-
-	Status bool
-
-	StrMarket string
-	StrType   string
-
-	StatusName string // choice: [闭市, 盘前交易, 集合竞价，交易中，休市]
-	TradeTime  time.Time
-}
-
 type Index struct {
 	Market struct {
 		Region     string `json:"region"`
@@ -40,31 +26,6 @@ type Index struct {
 	} `json:"market"`
 
 	Stock Stock `json:"quote"`
-}
-
-func (m *Market) ReSet() {
-	m.count = 0
-}
-
-func (m *Market) Incr() {
-	m.count++
-	if m.count > 100 {
-		m.count = m.count % 100
-	}
-}
-
-func (m *Market) Freq() int {
-	if m.count%100 == 0 {
-		return 2
-	}
-	if m.count%10 == 0 {
-		return 1
-	}
-	return 0
-}
-
-func (m *Market) FreqIsZero() bool {
-	return m.count == 0
 }
 
 type Stock struct {

@@ -23,17 +23,19 @@ func runBackTest(backType string, arg float64, argName string, buy BACK_FUNC, se
 	coll := db.BackDB.Collection(backType)
 	coll.EnsureIndexes(ctx, []string{"code,arg"}, nil)
 
+	// rm collection
 	coll.Remove(ctx, bson.M{"arg": arg, "arg_name": argName})
 	bulk := coll.Bulk()
 
-	cache.KlineMap.Range(func(id string, k []*model.Kline) {
+	// run
+	cache.KlineMap.Range(func(id string, klines []*model.Kline) {
 		trade := model.NewTrade(id, arg, argName)
-		for i := range k {
-			if buy(k[i]) {
-				trade.Buy(k[i])
+		for _, k := range klines {
+			if buy(k) {
+				trade.Buy(k)
 
-			} else if sell(k[i]) {
-				trade.Sell(k[i])
+			} else if sell(k) {
+				trade.Sell(k)
 			}
 		}
 		bulk.InsertOne(trade)

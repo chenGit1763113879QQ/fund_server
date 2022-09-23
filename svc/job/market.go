@@ -65,7 +65,7 @@ func getMarketStatus() {
 	codes := "SH000001,SZ399001,SZ399006,SH000688,HKHSI,HKHSCCI,HKHSCEI,.DJI,.IXIC,.INX,ICS30"
 	body, _ := util.GetAndRead("https://xueqiu.com/service/v5/stock/batch/quote?symbol=" + codes)
 
-	var indexes []model.Index
+	var indexes []*model.Index
 	util.UnmarshalJSON(body, &indexes, "data", "items")
 
 	for _, i := range indexes {
@@ -89,32 +89,17 @@ func getMarketStatus() {
 	}
 }
 
-func GetTradeTime(code string) time.Time {
+func GetMarket(code string) *model.Market {
 	splits := strings.Split(code, ".")
 	if len(splits) == 2 {
 		switch splits[1] {
-		case "SH", "SZ", "BJ":
-			return Markets[0].TradeTime
+		case "CN", "SH", "SZ", "BJ":
+			return Markets[0]
 		case "HK":
-			return Markets[1].TradeTime
+			return Markets[1]
 		case "US":
-			return Markets[2].TradeTime
+			return Markets[2]
 		}
 	}
-	return time.Unix(0, 0)
-}
-
-func GetCodeMarket(code string) util.Code {
-	splits := strings.Split(code, ".")
-	if len(splits) == 2 {
-		switch splits[1] {
-		case "SH", "SZ", "BJ":
-			return util.MARKET_CN
-		case "HK":
-			return util.MARKET_HK
-		case "US":
-			return util.MARKET_US
-		}
-	}
-	return 0
+	return nil
 }
