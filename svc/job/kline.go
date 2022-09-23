@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -39,7 +38,7 @@ func InitKlines() {
 		coll.RemoveAll(ctx, bson.M{"meta.code": id})
 		coll.InsertMany(ctx, klines)
 
-		db.LimitDB.Set(ctx, "kline:"+id, 1, viper.GetDuration("kline.update.duration"))
+		db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*12)
 	}
 
 	p := util.NewPool(4)
