@@ -14,7 +14,6 @@ import (
 
 func PredictStock() {
 	for _, k := range getCNStocks() {
-		fmt.Println(k)
 		predict(k, 30)
 		predict(k, 60)
 	}

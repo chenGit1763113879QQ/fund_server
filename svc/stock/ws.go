@@ -125,20 +125,35 @@ func Notify(c *gin.Context) {
 		Chart  string    `json:"chart"`
 	}
 
-	for ws.Alive() {
-		ws.ReadJson(&req)
+	var last_p *model.Market
 
-		// market status
+	marketStatus := func() {
 		for _, m := range job.Markets {
 			if req.Market == m.Market {
+				if m == last_p {
+					return
+				}
 				ws.WriteJson(bson.M{"type": "status", "data": m})
-				break
+				last_p = m
+				return
 			}
 		}
+	}
+
+	getChart := func() {
+		GetStockDetail(req.Code)
 
 		switch req.Chart {
 		default:
 			ws.WriteJson(bson.M{"type": "minute", "data": GetSimpleChart(req.Code, req.Chart)})
 		}
+	}
+
+	// main
+	for ws.Alive() {
+		ws.ReadJson(&req)
+
+		marketStatus()
+		getChart()
 	}
 }

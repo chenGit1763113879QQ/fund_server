@@ -141,14 +141,10 @@ func IsChinese(str string) bool {
 func UnmarshalJSON(body []byte, data any, path ...interface{}) error {
 	node, err := sonic.Get(body, path...)
 	if err != nil {
-		log.Warn().Msgf("unmarshal get node err: %s", err.Error())
+		log.Warn().Msgf("unmarshal node err: %v", err)
 		return err
 	}
-	raw, err := node.Raw()
-	if err != nil {
-		log.Warn().Msgf("unmarshal get raw err: %s", err.Error())
-		return err
-	}
+	raw, _ := node.Raw()
 	return sonic.UnmarshalString(raw, &data)
 }
 

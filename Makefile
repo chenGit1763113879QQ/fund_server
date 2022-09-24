@@ -10,6 +10,9 @@ tidy:
 	go mod tidy
 	go clean
 
+dailyinfo:
+	python3 script/dailyinfo.py
+
 database:
 	python3 script/database.py
 

@@ -18,7 +18,7 @@ klineDB = pymongo.MongoClient("mongodb://localhost:27017")["kline"]
 
 def md5_code(code: str) -> str:
     val = hashlib.md5(code.encode('utf8')).hexdigest()
-    return val[0:2]
+    return str(ord(val[0]) % 8) + val[1]
 
 
 # 数据库更新类
@@ -30,7 +30,7 @@ class DataBase:
         self.stock_indicate()
 
     # 后台运行
-    def background_worker(self, func=None, arg_list=None, work_name=None, work_num=16):
+    def worker(self, func=None, arg_list=None, work_name=None, work_num=16):
         self.i = 0
         bar = progressbar.ProgressBar(max_value=len(arg_list), prefix=work_name)
 
@@ -56,22 +56,19 @@ class DataBase:
     def stock_indicate(self):
         def func(dt: str):
             df = pd.concat([
-                pro.moneyflow(
-                    trade_date=dt,
+                pro.moneyflow(trade_date=dt,
                     fields="ts_code,buy_lg_amount,sell_lg_amount,buy_elg_amount,sell_elg_amount,net_mf_amount").set_index(
                     'ts_code'),
                 pro.cyq_perf(trade_date=dt, fields='ts_code,weight_avg,winner_rate').set_index('ts_code'),
 
-            ], axis=1).rename(
-                columns={'net_mf_amount': 'net'})
+            ], axis=1).rename(columns={'net_mf_amount': 'net'})
 
-            # 大单资金流
+            # 资金流
             df['main_buy'] = df['buy_lg_amount'] + df['buy_elg_amount']
             df['main_sell'] = df['sell_lg_amount'] + df['sell_elg_amount']
             df['main_net'] = df['main_buy'] - df['main_sell']
 
             # 去除多余数据
-            df = df.drop(columns=['trade_date'])
             for col in df.columns:
                 if 'lg_amount' in col:
                     df = df.drop(columns=[col])
@@ -86,17 +83,12 @@ class DataBase:
 
                 for code, i in df.iterrows():
                     row = i.dropna().to_dict()
-                    row['code'] = code
-                    row['time'] = dt
-                    docs.append(UpdateOne({'code': code, 'time': dt}, {'$set': row}, upsert=True))
+                    docs.append(UpdateOne({'code': code, 'time': dt}, {'$set': row}))
 
-                # ensure index
-                klineDB[coll].create_index([("code", 1), ("time", 1)], unique=True)
-                # 写入
                 klineDB[coll].bulk_write(docs)
 
-        cal = pro.index_daily(ts_code='000001.SH', start_date='20120101', fields="trade_date")
-        self.background_worker(func=func, arg_list=cal['trade_date'], work_name='更新股票行情')
+        cal = pro.index_daily(ts_code='000001.SH', start_date='20120901', fields="trade_date")
+        self.worker(func=func, arg_list=cal['trade_date'], work_name='更新股票行情')
 
 
 t = DataBase()

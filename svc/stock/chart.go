@@ -72,7 +72,7 @@ func GetSimpleChart(code string, chartType string) any {
 		t, _ := time.Parse("2006/01/02", "2022/01/01")
 
 		db.KlineDB.Collection(util.Md5Code(code)).
-			Find(ctx, bson.M{"meta.code": code, "time": bson.M{"$gt": t}}).
+			Find(ctx, bson.M{"code": code, "time": bson.M{"$gt": t}}).
 			Select(bson.M{"close": 1, "time": 1}).
 			Sort("-time").Limit(100).All(&arr)
 
@@ -116,9 +116,9 @@ func GetKline(c *gin.Context) {
 		case "y", "q", "m":
 			req.StartDate = "2012/01/01"
 		case "w":
-			req.StartDate = "2016/01/01"
+			req.StartDate = "2015/06/01"
 		default:
-			req.StartDate = "2020/06/01"
+			req.StartDate = "2020/01/01"
 		}
 	}
 
@@ -126,22 +126,23 @@ func GetKline(c *gin.Context) {
 
 	var data []bson.M
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"meta.code": req.Code, "time": bson.M{"$gt": t}}).
+		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
 		Group(bson.M{
-			"_id":           bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
-			"time":          bson.M{"$last": "$time"},
-			"open":          bson.M{"$first": "$open"},
-			"close":         bson.M{"$last": "$close"},
-			"high":          bson.M{"$max": "$high"},
-			"low":           bson.M{"$min": "$low"},
-			"main_net":      bson.M{"$sum": "$main_net"},
-			"vol":           bson.M{"$sum": "$vol"},
-			"amount":        bson.M{"$sum": "$amount"},
-			"pct_chg":       bson.M{"$sum": "$pct_chg"},
-			"balance":       bson.M{"$last": "$balance"},
-			"winner_rate":   bson.M{"$last": "$winner_rate"},
-			"hold_ratio_cn": bson.M{"$last": "$hold_ratio_cn"},
-			"net_vol_cn":    bson.M{"$sum": "$net_vol_cn"},
+			"_id":         bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
+			"time":        bson.M{"$last": "$time"},
+			"open":        bson.M{"$first": "$open"},
+			"close":       bson.M{"$last": "$close"},
+			"high":        bson.M{"$max": "$high"},
+			"low":         bson.M{"$min": "$low"},
+			"main_net":    bson.M{"$sum": "$main_net"},
+			"net":         bson.M{"$sum": "$net"},
+			"vol":         bson.M{"$sum": "$vol"},
+			"amount":      bson.M{"$sum": "$amount"},
+			"pct_chg":     bson.M{"$sum": "$pct_chg"},
+			"balance":     bson.M{"$last": "$balance"},
+			"winner_rate": bson.M{"$last": "$winner_rate"},
+			"ratio":       bson.M{"$last": "$hold_ratio_cn"},
+			"net_vol_cn":  bson.M{"$sum": "$net_vol_cn"},
 		}).Sort(bson.M{"time": 1}).
 		Do()).All(&data)
 

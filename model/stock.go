@@ -171,9 +171,8 @@ type Kline struct {
 	Time      time.Time `csv:"-"`
 	TimeStamp int64     `bson:"-" csv:"timestamp"`
 
-	Meta struct {
-		Code string
-	}
+	Code       string
+	WinnerRate float64 `bson:"winner_rate,omitempty"`
 
 	Open   float64 `csv:"open"`
 	High   float64 `csv:"high"`
@@ -185,18 +184,6 @@ type Kline struct {
 	MainNet float64 `bson:",omitempty"`
 	Net     float64 `bson:",omitempty"`
 
-	Dv float64 `bson:"dv_ttm,omitempty"`
-
-	KDJ_K float64 `bson:",omitempty" csv:"kdjk"`
-	KDJ_D float64 `bson:",omitempty" csv:"kdjd"`
-	KDJ_J float64 `bson:",omitempty" csv:"kdjj"`
-
-	WinnerRate float64 `bson:"winner_rate"`
-
-	RSI_6  float64 `bson:",omitempty" csv:"rsi1"`
-	RSI_12 float64 `bson:",omitempty" csv:"rsi2"`
-	RSI_24 float64 `bson:",omitempty" csv:"rsi3"`
-
 	MACD     float64 `bson:",omitempty" csv:"macd"`
 	MACD_DEA float64 `bson:",omitempty" csv:"dea"`
 	MACD_DIF float64 `bson:",omitempty" csv:"dif"`
@@ -205,7 +192,6 @@ type Kline struct {
 	BOLL_UP  float64 `bson:",omitempty" csv:"ub"`
 	BOLL_LOW float64 `bson:",omitempty" csv:"lb"`
 
-	CCI     float64 `bson:",omitempty" csv:"cci"`
 	Mc      float64 `bson:",omitempty" csv:"market_capital"`
 	Balance float64 `bson:",omitempty" csv:"balance"`
 

@@ -30,12 +30,16 @@ func InitKlines() {
 		if ok, _ := db.LimitDB.Exists(ctx, "kline:"+id).Result(); ok > 0 {
 			return
 		}
+
 		// get kline
 		klines := getKline(symbol, id)
+		if klines == nil {
+			return
+		}
 
-		coll := db.TimeSeriesCollection(util.Md5Code(id))
-		coll.EnsureIndexes(ctx, nil, []string{"meta.code,time"})
-		coll.Remove(ctx, bson.M{"meta.code": id})
+		coll := db.KlineDB.Collection(util.Md5Code(id))
+		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
+		coll.Remove(ctx, bson.M{"code": id})
 		coll.InsertMany(ctx, klines)
 
 		db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*12)
@@ -51,7 +55,7 @@ func InitKlines() {
 }
 
 func getKline(symbol string, Id string) []*model.Kline {
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=1350000000000&period=day&count=9999&type=before&indicator=kline,pe,pb,market_capital,agt,ggt,kdj,macd,boll,rsi,cci,balance", symbol)
+	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=1350000000000&period=day&count=9999&type=before&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol)
 	body, _ := util.XueQiuAPI(url)
 
 	var data struct {
@@ -60,7 +64,11 @@ func getKline(symbol string, Id string) []*model.Kline {
 			Item   [][]float64 `json:"item"`
 		} `json:"data"`
 	}
-	util.UnmarshalJSON(body, &data)
+
+	// unmarshal
+	if err := util.UnmarshalJSON(body, &data); err != nil {
+		return nil
+	}
 
 	klines := make([]*model.Kline, len(data.Data.Item))
 
@@ -103,7 +111,7 @@ func getKline(symbol string, Id string) []*model.Kline {
 
 	// set
 	for i := range klines {
-		klines[i].Meta.Code = Id
+		klines[i].Code = Id
 		timeStr := time.Unix(klines[i].TimeStamp/1000, 0).Format("2006/01/02")
 		klines[i].Time, _ = time.Parse("2006/01/02", timeStr)
 	}
@@ -124,7 +132,7 @@ func loadKlines() {
 
 			// get kline
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
-				Match(bson.M{"meta.code": id, "time": bson.M{"$gt": t}}).
+				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
 				Sort(bson.M{"time": 1}).Do()).All(&data)
 			if data != nil {
 				cache.KlineMap.Store(id, data)

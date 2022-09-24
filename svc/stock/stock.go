@@ -139,15 +139,16 @@ func AllBKDetails(c *gin.Context) {
 	}
 
 	data := make([]bson.M, 0)
+
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"marketType": req.Market, "type": util.TYPE_IDS}).
 		Sort(bson.M{req.Sort: -1}).Limit(50).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
-			"name": 1, "pct_chg": 1, "amount": 1, "mc": 1, req.Sort: 1,
+			"_id": 1, "name": 1, "pct_chg": 1, "amount": 1, "mc": 1, "followers": 1,
 			"children": bson.M{
-				"_id": 1, "name": 1, "price": 1, "amount": 1, "pct_chg": 1,
-				"mc": 1, req.Sort: 1,
+				"_id": 1, "name": 1, "amount": 1, "pct_chg": 1,
+				"price": 1, "mc": 1, "followers": 1,
 			},
 		}).Do()).All(&data)
 

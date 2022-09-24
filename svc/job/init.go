@@ -47,7 +47,7 @@ func init() {
 
 		loadKlines()
 
-		// WinRate()
+		WinRate()
 		PredictStock()
 
 		cache.KlineMap.Clear()
