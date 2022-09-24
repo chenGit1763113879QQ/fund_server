@@ -34,8 +34,8 @@ func InitKlines() {
 		klines := getKline(symbol, id)
 
 		coll := db.TimeSeriesCollection(util.Md5Code(id))
-		coll.EnsureIndexes(ctx, nil, []string{"meta.code"})
-		coll.RemoveAll(ctx, bson.M{"meta.code": id})
+		coll.EnsureIndexes(ctx, nil, []string{"meta.code,time"})
+		coll.Remove(ctx, bson.M{"meta.code": id})
 		coll.InsertMany(ctx, klines)
 
 		db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*12)

@@ -3,7 +3,6 @@ services:
   mongo:
     image: mongo
     container_name: "fund_mongo"
-    restart: always
     networks:
       - default
     environment:
@@ -16,7 +15,6 @@ services:
   redis:
     image: redis:alpine
     container_name: "fund_redis"
-    restart: always
     networks:
       - default
     ports:

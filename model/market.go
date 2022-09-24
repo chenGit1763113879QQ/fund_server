@@ -6,14 +6,14 @@ import (
 )
 
 type Market struct {
-	Market util.Code
-	Type   util.Code
+	Market util.Code `json:"-"`
+	Type   util.Code `json:"-"`
 	count  uint8
 
 	Status bool
 
 	StrMarket string
-	StrType   string
+	StrType   string `json:"-"`
 
 	StatusName string
 	TradeTime  time.Time

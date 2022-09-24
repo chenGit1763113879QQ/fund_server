@@ -120,16 +120,25 @@ func Notify(c *gin.Context) {
 	ws := model.NewWebSocket(c)
 
 	var req struct {
-		Code  string `json:"code"`
-		Chart string `json:"chart"`
+		Code   string    `json:"code"`
+		Market util.Code `json:"market"`
+		Chart  string    `json:"chart"`
 	}
 
-	for ws.Err == nil {
+	for ws.Alive() {
 		ws.ReadJson(&req)
+
+		// market status
+		for _, m := range job.Markets {
+			if req.Market == m.Market {
+				ws.WriteJson(bson.M{"type": "status", "data": m})
+				break
+			}
+		}
 
 		switch req.Chart {
 		default:
-			ws.WriteJson(bson.M{"data": GetSimpleChart(req.Code, req.Chart)})
+			ws.WriteJson(bson.M{"type": "minute", "data": GetSimpleChart(req.Code, req.Chart)})
 		}
 	}
 }

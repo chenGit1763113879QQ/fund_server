@@ -23,7 +23,7 @@ func PredictStock() {
 
 func predict(code string, days int) {
 	// cache
-	exist, _ := db.LimitDB.Exists(ctx, "predict:"+code).Result()
+	exist, _ := db.LimitDB.Exists(ctx, fmt.Sprintf("predict_%d:%s", days, code)).Result()
 	if exist > 0 {
 		return
 	}
@@ -56,7 +56,7 @@ func predict(code string, days int) {
 			// cal std
 			res := std(srcClose, matchClose)
 
-			if res < 0.1 {
+			if res <= 0.01 {
 				bulk.InsertOne(bson.M{
 					"src_code": code, "match_code": matchCode,
 					"match_date": match[i].Time, "period": days, "std": res,
@@ -64,10 +64,10 @@ func predict(code string, days int) {
 			}
 		}
 	})
-	bulk.RemoveAll(bson.M{"src_code": code})
+	bulk.Remove(bson.M{"src_code": code, "period": days})
 	bulk.Run(ctx)
 
-	db.LimitDB.Set(ctx, "predict:"+code, "1", time.Hour*12)
+	db.LimitDB.Set(ctx, fmt.Sprintf("predict_%d:%s", days, code), "1", time.Hour*12)
 }
 
 func closeIndex(k []*model.Kline, start int, end int) []float64 {

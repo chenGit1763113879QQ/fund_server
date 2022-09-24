@@ -113,6 +113,7 @@ func getIndustry(m *model.Market) {
 			"pe_ttm":    bson.M{"$avg": "$c.pe_ttm"},
 			"pb":        bson.M{"$avg": "$c.pb"},
 			"pct_year":  bson.M{"$avg": "$c.pct_year"},
+			"count":     bson.M{"$size": "$c"},
 		}).Do()).All(&data)
 
 	bulk := db.Stock.Bulk()

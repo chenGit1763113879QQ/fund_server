@@ -56,10 +56,14 @@ func (c *Conn) ReadJson(data any) {
 }
 
 func (c *Conn) Ping() {
-	for c.Err == nil {
+	for c.Alive() {
 		time.Sleep(time.Second * 10)
 		c.WriteJson(map[string]string{
 			"type": "ping", "time": time.Now().Format("2006/01/02 15:04:05"),
 		})
 	}
+}
+
+func (c *Conn) Alive() bool {
+	return c != nil && c.Err == nil
 }

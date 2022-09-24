@@ -2,6 +2,7 @@ package job
 
 import (
 	"context"
+	"fund/cache"
 	"fund/model"
 	"fund/util"
 	"sync"
@@ -44,12 +45,12 @@ func init() {
 	util.GoJob(func() {
 		InitKlines()
 
-		// loadKlines()
+		loadKlines()
 
 		// WinRate()
-		// PredictStock()
+		PredictStock()
 
-		// cache.KlineMap.Clear()
+		cache.KlineMap.Clear()
 
 	}, time.Hour*12, time.Second*5)
 }

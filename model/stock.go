@@ -78,20 +78,21 @@ type Stock struct {
 }
 
 type Industry struct {
-	Vol       uint `bson:"vol"`
-	Followers uint `bson:"followers"`
+	Vol       uint
+	Followers uint
+	Count     uint
 
 	Id string `bson:"_id"`
 
 	PctChg  float64 `bson:"pct_chg"`
-	Pb      float64 `bson:"pb"`
+	Pb      float64
 	PeTtm   float64 `bson:"pe_ttm"`
-	Tr      float64 `bson:"tr"`
+	Tr      float64
 	PctYear float64 `bson:"pct_year"`
 
-	Amount  float64 `bson:"amount"`
-	Mc      float64 `bson:"mc"`
-	Fmc     float64 `bson:"fmc"`
+	Amount  float64
+	Mc      float64
+	Fmc     float64
 	MainNet float64 `bson:"main_net"`
 }
 
