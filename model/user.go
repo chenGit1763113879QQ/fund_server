@@ -25,9 +25,9 @@ type LoginForm struct {
 }
 
 type Article struct {
-	field.DefaultField `bson:",inline"`
-	Title              string    `json:"title"`
-	Content            string    `json:"content"`
-	CreateAt           time.Time `bson:"createAt"`
-	Tag                []string  `json:"tag"`
+	Id       string    `bson:"_id"`
+	Title    string    `json:"title"`
+	Content  string    `json:"content"`
+	CreateAt time.Time `bson:"createAt"`
+	Tag      []string  `json:"tag"`
 }

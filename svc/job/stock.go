@@ -6,6 +6,7 @@ import (
 	"fund/model"
 	"fund/util"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -101,17 +102,13 @@ func updateMinute(s []*model.Stock, m *model.Market) {
 }
 
 func getNews() {
+	url := "https://baoer-api.xuangubao.cn/api/v6/message/newsflash?limit=1000&subj_ids=10,723,35"
+
 	var stocks []*struct {
 		Code string `bson:"_id"`
 		Name string `bson:"name"`
 	}
 	db.Stock.Find(ctx, bson.M{}).All(&stocks)
-
-	var news []*struct {
-		Datetime string `csv:"datetime"`
-		Content  string `csv:"content"`
-		Title    string `csv:"title"`
-	}
 
 	// 中文名去除后缀
 	for _, s := range stocks {
@@ -120,14 +117,20 @@ func getNews() {
 		}
 	}
 
-	loc, _ := time.LoadLocation("Asia/Shanghai")
-
-	if err := util.TushareApi("news", bson.M{"src": "eastmoney"}, "datetime,title,content", &news); err != nil {
-		log.Error().Msg(err.Error())
-		return
+	var data []struct {
+		Id       int    `json:"id"`
+		Title    string `json:"title"`
+		Content  string `json:"summary"`
+		CreateAt int64  `json:"created_at"`
 	}
 
-	for _, n := range news {
+	// get news
+	body, _ := util.GetAndRead(url)
+	if err := util.UnmarshalJSON(body, &data, "data", "messages"); err != nil {
+		log.Error().Msg(err.Error())
+	}
+
+	for _, n := range data {
 		// 匹配
 		codes := make([]string, 0)
 		for _, s := range stocks {
@@ -138,11 +141,11 @@ func getNews() {
 			}
 		}
 
-		t, _ := time.ParseInLocation("2006-01-02 15:04:05", n.Datetime, loc)
 		db.Article.InsertOne(ctx, &model.Article{
+			Id:       strconv.Itoa(n.Id),
 			Title:    n.Title,
 			Content:  n.Content,
-			CreateAt: t,
+			CreateAt: time.Unix(n.CreateAt, 0).Local(),
 			Tag:      codes,
 		})
 	}
