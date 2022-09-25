@@ -7,11 +7,9 @@ import (
 	"fund/model"
 	"fund/util"
 	"fund/util/mongox"
-	"math"
-	"reflect"
-	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -58,62 +56,32 @@ func getKline(symbol string, Id string) []*model.Kline {
 	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=1350000000000&period=day&count=9999&type=before&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol)
 	body, _ := util.XueQiuAPI(url)
 
-	var data struct {
-		Data struct {
-			Column []string    `json:"column"`
-			Item   [][]float64 `json:"item"`
-		} `json:"data"`
-	}
-
-	// unmarshal
-	if err := util.UnmarshalJSON(body, &data); err != nil {
+	// get node
+	node, err := sonic.Get(body, "data")
+	if err != nil {
+		log.Error().Msg(err.Error())
 		return nil
 	}
 
-	klines := make([]*model.Kline, len(data.Data.Item))
+	raw, _ := node.Raw()
 
-	// reflect
-	typeof := reflect.TypeOf(model.Kline{})
-
-	// get csv tag
-	tags := make([]string, typeof.NumField())
-	for i := 0; i < typeof.NumField(); i++ {
-		tags[i] = strings.Split(typeof.Field(i).Tag.Get("csv"), ",")[0]
+	// decompress
+	dst, err := util.DeCompressJson([]byte(raw))
+	if err != nil {
+		return nil
 	}
 
-	for i, items := range data.Data.Item {
-		// declare
-		klines[i] = new(model.Kline)
-
-		value := reflect.ValueOf(klines[i]).Elem()
-
-		for colI, col := range data.Data.Column {
-			for tagI, tag := range tags {
-				if tag == col {
-					// null number
-					if items[colI] < 0.0001 || items[colI] > math.Pow(10, 16) {
-						break
-					}
-
-					// set value
-					switch value.Field(tagI).Kind() {
-					case reflect.Float64:
-						value.Field(tagI).SetFloat(items[colI])
-
-					case reflect.Int64:
-						value.Field(tagI).SetInt(int64(items[colI]))
-					}
-					break
-				}
-			}
-		}
+	// unmarshal
+	var klines []*model.Kline
+	if err := util.UnmarshalJSON(dst, &klines); err != nil {
+		return nil
 	}
 
 	// set
-	for i := range klines {
-		klines[i].Code = Id
-		timeStr := time.Unix(klines[i].TimeStamp/1000, 0).Format("2006/01/02")
-		klines[i].Time, _ = time.Parse("2006/01/02", timeStr)
+	for _, k := range klines {
+		k.Code = Id
+		timeStr := time.Unix(k.TimeStamp/1000, 0).Format("2006/01/02")
+		k.Time, _ = time.Parse("2006/01/02", timeStr)
 	}
 
 	return klines

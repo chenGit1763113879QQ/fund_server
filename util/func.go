@@ -77,16 +77,6 @@ func IsChinese(str string) bool {
 	return false
 }
 
-func UnmarshalJSON(body []byte, data any, path ...any) error {
-	node, err := sonic.Get(body, path...)
-	if err != nil {
-		log.Warn().Msgf("unmarshal node err: %v", err)
-		return err
-	}
-	raw, _ := node.Raw()
-	return sonic.UnmarshalString(raw, &data)
-}
-
 func Mean[T int | int64 | float64](arr []T) float64 {
 	var sum T
 	for i := range arr {
@@ -108,4 +98,51 @@ func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
 			time.Sleep(duration)
 		}
 	}()
+}
+
+func UnmarshalJSON(body []byte, data any, path ...any) error {
+	node, err := sonic.Get(body, path...)
+	if err != nil {
+		log.Warn().Msgf("unmarshal node err: %v", err)
+		return err
+	}
+	raw, _ := node.Raw()
+	return sonic.UnmarshalString(raw, &data)
+}
+
+/*
+	function DeCompressJson
+	src: {
+		"column": ["a", "b", "c"],
+		"item": [
+			[1, 2, 3],
+			[4, 5, 6]
+		]
+	}
+	dst: [
+		{"a": 1, "b": 2, "c": 3},
+		{"a": 4, "b": 5, "c": 6}
+	]
+*/
+func DeCompressJson(src []byte) (dst []byte, err error) {
+	var data struct {
+		Column []string `json:"column"`
+		Item   [][]any  `json:"item"`
+	}
+	if err = UnmarshalJSON(src, &data); err != nil {
+		log.Error().Msg(err.Error())
+		return
+	}
+
+	dstMap := make([]map[string]any, len(data.Item))
+	for i, item := range data.Item {
+		dstMap[i] = map[string]any{}
+
+		for c, col := range data.Column {
+			dstMap[i][col] = item[c]
+		}
+	}
+
+	dst, err = sonic.Marshal(&dstMap)
+	return
 }
