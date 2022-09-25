@@ -30,6 +30,7 @@ var (
 
 	FundDB   *qmgo.Database
 	KlineDB  *qmgo.Database
+	MKlineDB *qmgo.Database
 	BackDB   *qmgo.Database
 	MinuteDB *qmgo.Database
 
@@ -59,6 +60,7 @@ func init() {
 	FundDB = client.Database("fund")
 	BackDB = client.Database("back")
 	KlineDB = client.Database("kline")
+	MKlineDB = client.Database("mKline")
 	MinuteDB = client.Database("minute")
 
 	Stock = FundDB.Collection("stock")

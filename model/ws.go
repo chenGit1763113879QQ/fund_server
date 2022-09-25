@@ -11,7 +11,7 @@ import (
 )
 
 type Conn struct {
-	mu   sync.Mutex
+	sync.Mutex
 	Conn *websocket.Conn
 	Err  error
 }
@@ -34,21 +34,24 @@ func (c *Conn) WriteJson(data any) {
 	if c.Err != nil {
 		return
 	}
-	c.mu.Lock()
+	c.Lock()
+	defer c.Unlock()
+
 	c.Err = c.Conn.WriteJSON(data)
-	c.mu.Unlock()
+
 }
 
 func (c *Conn) WriteBson(src any) {
 	if c.Err != nil {
 		return
 	}
-	c.mu.Lock()
+	c.Lock()
+	defer c.Unlock()
+
 	var dst bson.M
 	str, _ := bson.Marshal(src)
 	bson.Unmarshal(str, &dst)
 	c.Err = c.Conn.WriteJSON(dst)
-	c.mu.Unlock()
 }
 
 func (c *Conn) ReadJson(data any) {

@@ -78,7 +78,7 @@ func getMarketStatus() {
 
 				// tradeTime
 				cst, _ := time.LoadLocation(i.Market.TimeZone)
-				p.TradeTime = time.Unix(i.Stock.Time/1000, 0).In(cst)
+				p.TradeTime = time.UnixMilli(i.Stock.Time).In(cst)
 
 				i.Stock.Type = util.TYPE_INDEX
 

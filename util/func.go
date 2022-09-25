@@ -3,6 +3,7 @@ package util
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"unicode"
 
 	"github.com/bytedance/sonic"
+	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 )
 
@@ -23,7 +25,7 @@ func In[T string | int](mem T, arr []T) bool {
 	return false
 }
 
-// expressions
+// Expressions
 func Exp[T string | int | float64](isTrue bool, yes T, no T) T {
 	if isTrue {
 		return yes
@@ -32,7 +34,7 @@ func Exp[T string | int | float64](isTrue bool, yes T, no T) T {
 	}
 }
 
-// http get and read
+// Http get and read
 func GetAndRead(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
@@ -45,7 +47,7 @@ func GetAndRead(url string) ([]byte, error) {
 	return body, nil
 }
 
-// get xueqiu api
+// Get XueQiu api
 func XueQiuAPI(url string) ([]byte, error) {
 	// add token
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
@@ -69,9 +71,9 @@ func Md5Code(code string) string {
 	return fmt.Sprintf("%X%c", val[0]%8, val[1])
 }
 
+// Check str is Chinese
 func IsChinese(str string) bool {
 	for _, r := range str {
-		// only check first character
 		return unicode.Is(unicode.Han, r)
 	}
 	return false
@@ -85,14 +87,12 @@ func Mean[T int | int64 | float64](arr []T) float64 {
 	return float64(sum) / float64(len(arr))
 }
 
-// go func for every duration
+// Go Job for every duration
 func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
 	go func() {
-		// delay
-		if len(delay) > 0 {
-			time.Sleep(delay[0])
+		for _, dl := range delay {
+			time.Sleep(dl)
 		}
-		// go func
 		for {
 			f()
 			time.Sleep(duration)
@@ -100,6 +100,7 @@ func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
 	}()
 }
 
+// Unmarshal JSON
 func UnmarshalJSON(body []byte, data any, path ...any) error {
 	node, err := sonic.Get(body, path...)
 	if err != nil {
@@ -111,38 +112,45 @@ func UnmarshalJSON(body []byte, data any, path ...any) error {
 }
 
 /*
-	function DeCompressJson
-	src: {
+	DeCompressJson and use mapstructure to decode
+	src: `{
 		"column": ["a", "b", "c"],
 		"item": [
 			[1, 2, 3],
 			[4, 5, 6]
 		]
-	}
-	dst: [
+	}`
+	--> []map[string]any[
 		{"a": 1, "b": 2, "c": 3},
 		{"a": 4, "b": 5, "c": 6}
 	]
+	--> dst
 */
-func DeCompressJson(src []byte) (dst []byte, err error) {
+func DeCompressJSON(src []byte, dst any) error {
+	if src == nil && dst == nil {
+		log.Error().Msg("src or dst is nil")
+		return errors.New("src or dst is nil")
+	}
+
 	var data struct {
 		Column []string `json:"column"`
 		Item   [][]any  `json:"item"`
 	}
-	if err = UnmarshalJSON(src, &data); err != nil {
+	// unmarshal
+	if err := UnmarshalJSON(src, &data); err != nil {
 		log.Error().Msg(err.Error())
-		return
+		return err
 	}
 
-	dstMap := make([]map[string]any, len(data.Item))
+	// map
+	srcMap := make([]map[string]any, len(data.Item))
 	for i, item := range data.Item {
-		dstMap[i] = map[string]any{}
+		srcMap[i] = map[string]any{}
 
 		for c, col := range data.Column {
-			dstMap[i][col] = item[c]
+			srcMap[i][col] = item[c]
 		}
 	}
 
-	dst, err = sonic.Marshal(&dstMap)
-	return
+	return mapstructure.Decode(srcMap, dst)
 }

@@ -160,46 +160,46 @@ type Range struct {
 }
 
 type Kline struct {
-	PctChg float64 `bson:"pct_chg" csv:"percent"`
-	Tr     float64 `bson:",omitempty" csv:"turnoverrate"`
+	PctChg float64 `bson:"pct_chg" mapstructure:"percent"`
+	Tr     float64 `bson:",omitempty" mapstructure:"turnoverrate"`
 
-	Pe  float64 `bson:",omitempty" csv:"pe"`
-	Pb  float64 `bson:",omitempty" csv:"pb"`
-	Ps  float64 `bson:",omitempty" csv:"ps"`
-	Pcf float64 `bson:",omitempty" csv:"pcf"`
+	Pe  float64 `bson:",omitempty"`
+	Pb  float64 `bson:",omitempty"`
+	Ps  float64 `bson:",omitempty"`
+	Pcf float64 `bson:",omitempty"`
 
-	Time      time.Time `csv:"-"`
-	TimeStamp int64     `bson:"-" csv:"timestamp"`
+	Time      time.Time
+	TimeStamp int64 `bson:"-"`
 
 	Code       string
 	WinnerRate float64 `bson:"winner_rate,omitempty"`
 
-	Open   float64 `csv:"open"`
-	High   float64 `csv:"high"`
-	Low    float64 `csv:"low"`
-	Close  float64 `csv:"close"`
-	Vol    int64   `csv:"volume"`
-	Amount float64 `csv:"amount"`
+	Open   float64
+	High   float64
+	Low    float64
+	Close  float64
+	Vol    int64
+	Amount float64
 
 	MainNet float64 `bson:",omitempty"`
 	Net     float64 `bson:",omitempty"`
 
-	MACD     float64 `bson:",omitempty" csv:"macd"`
-	MACD_DEA float64 `bson:",omitempty" csv:"dea"`
-	MACD_DIF float64 `bson:",omitempty" csv:"dif"`
+	MACD     float64 `bson:",omitempty"`
+	MACD_DEA float64 `bson:",omitempty" mapstructure:"dea"`
+	MACD_DIF float64 `bson:",omitempty" mapstructure:"dif"`
 
-	BOLL_MID float64 `bson:",omitempty" csv:"ma20"`
-	BOLL_UP  float64 `bson:",omitempty" csv:"ub"`
-	BOLL_LOW float64 `bson:",omitempty" csv:"lb"`
+	BOLL_MID float64 `bson:",omitempty" mapstructure:"ma20"`
+	BOLL_UP  float64 `bson:",omitempty" mapstructure:"ub"`
+	BOLL_LOW float64 `bson:",omitempty" mapstructure:"lb"`
 
-	Mc      float64 `bson:",omitempty" csv:"market_capital"`
-	Balance float64 `bson:",omitempty" csv:"balance"`
+	Mc      float64 `bson:",omitempty" mapstructure:"market_capital"`
+	Balance float64 `bson:",omitempty"`
 
-	HoldVolCN   int64   `bson:"hold_vol_cn,omitempty" csv:"hold_volume_cn"`
-	HoldRatioCN float64 `bson:"hold_ratio_cn,omitempty" csv:"hold_ratio_cn"`
-	NetVolCN    int64   `bson:"net_vol_cn,omitempty" csv:"net_volume_cn"`
+	HoldVolCN   int64   `bson:"hold_vol_cn,omitempty" mapstructure:"hold_volume_cn"`
+	HoldRatioCN float64 `bson:"hold_ratio_cn,omitempty" mapstructure:"hold_ratio_cn"`
+	NetVolCN    int64   `bson:"net_vol_cn,omitempty" mapstructure:"net_volume_cn"`
 
-	HoldVolHK   int64   `bson:"hold_vol_hk,omitempty" csv:"hold_volume_hk"`
-	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" csv:"hold_ratio_hk"`
-	NetVolHK    int64   `bson:"net_vol_hk,omitempty" csv:"net_volume_hk"`
+	HoldVolHK   int64   `bson:"hold_vol_hk,omitempty" mapstructure:"hold_volume_hk"`
+	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" mapstructure:"hold_ratio_hk"`
+	NetVolHK    int64   `bson:"net_vol_hk,omitempty" mapstructure:"net_volume_hk"`
 }

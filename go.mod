@@ -12,6 +12,7 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/jordan-wright/email v4.0.1-0.20210109023952-943e75fe5223+incompatible
 	github.com/klauspost/compress v1.15.10
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mozillazg/go-pinyin v0.19.0
 	github.com/qiniu/qmgo v1.1.2
 	github.com/rs/zerolog v1.28.0
