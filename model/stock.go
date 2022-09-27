@@ -32,9 +32,9 @@ type Stock struct {
 	MarketType util.Code `bson:"marketType"` // 市场
 	Type       util.Code `bson:"type"`       // 类型
 
-	Vol         uint  `json:"volume"`                                     // 成交量
-	Followers   int   `json:"followers"`                                  // 关注数
-	LimitUpDays int   `json:"limitup_days" bson:"limitup_days,omitempty"` // 涨停天数
+	Vol         int   `json:"volume"`                           // 成交量
+	Followers   int   `json:"followers"`                        // 关注数
+	LimitUpDays int   `json:"limitup_days" bson:"limitup_days"` // 涨停天数
 	Time        int64 `json:"time" bson:"time,omitempty"`
 
 	Id     string `bson:"_id"`
@@ -78,9 +78,9 @@ type Stock struct {
 }
 
 type Industry struct {
-	Vol       uint
-	Followers uint
-	Count     uint
+	Vol       int
+	Followers int
+	Count     int
 
 	Id string `bson:"_id"`
 

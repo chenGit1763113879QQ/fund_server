@@ -44,6 +44,7 @@ func init() {
 	// kline & predict
 	util.GoJob(func() {
 		InitKlines()
+		return
 
 		loadKlines()
 

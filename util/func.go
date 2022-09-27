@@ -113,23 +113,24 @@ func UnmarshalJSON(body []byte, data any, path ...any) error {
 
 /*
 	DeCompressJson and use mapstructure to decode
-	src: `{
+	1. {
 		"column": ["a", "b", "c"],
 		"item": [
 			[1, 2, 3],
 			[4, 5, 6]
 		]
-	}`
-	--> []map[string]any[
+	}
+	2. []map[string]any[
 		{"a": 1, "b": 2, "c": 3},
 		{"a": 4, "b": 5, "c": 6}
 	]
-	--> dst
+	3. struct dst
 */
 func DeCompressJSON(src []byte, dst any) error {
 	if src == nil && dst == nil {
-		log.Error().Msg("src or dst is nil")
-		return errors.New("src or dst is nil")
+		err := errors.New("src or dst is nil")
+		log.Error().Msg(err.Error())
+		return errors.New(err.Error())
 	}
 
 	var data struct {

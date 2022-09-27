@@ -18,7 +18,6 @@ type Task struct {
 
 // Return New Pool
 func NewPool(size ...int) *Pool {
-	// Default CPU Nums
 	num := runtime.NumCPU()
 	if len(size) > 0 {
 		num = size[0]
@@ -30,7 +29,6 @@ func NewPool(size ...int) *Pool {
 	}
 }
 
-// Add Task To Pool
 func (p *Pool) NewTask(task func(...string), params ...string) {
 	p.wg.Add(1)
 
@@ -58,7 +56,6 @@ func (p *Pool) worker(t Task) {
 	}
 }
 
-// Wait For Task End
 func (p *Pool) Wait() {
 	defer close(p.work)
 	defer close(p.sem)

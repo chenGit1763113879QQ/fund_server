@@ -60,7 +60,7 @@ func InitKlines() {
 		coll.Remove(ctx, bson.M{"code": id})
 		coll.InsertMany(ctx, klines)
 
-		db.LimitDB.Set(ctx, "kline:5m:"+id, 1, time.Hour)
+		db.LimitDB.Set(ctx, "kline:5m:"+id, 1, time.Hour*6)
 	}
 
 	p := util.NewPool(2)
@@ -90,10 +90,10 @@ func getKline(symbol string, Id string) []*model.Kline {
 	}
 
 	// set
+	layout := "2006/01/02"
 	for _, k := range klines {
 		k.Code = Id
-		timeStr := time.UnixMilli(k.TimeStamp).Format("2006/01/02")
-		k.Time, _ = time.Parse("2006/01/02", timeStr)
+		k.Time, _ = time.Parse(layout, time.UnixMilli(k.TimeStamp).Format(layout))
 	}
 	return klines
 }
