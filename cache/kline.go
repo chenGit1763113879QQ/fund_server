@@ -19,6 +19,9 @@ func (s *Map) Load(key string) []*model.Kline {
 }
 
 func (s *Map) Store(key string, value []*model.Kline) {
+	if value == nil {
+		return
+	}
 	s.Lock()
 	defer s.Unlock()
 	s.data[key] = value

@@ -7,9 +7,11 @@ import (
 	"fund/model"
 	"fund/util"
 	"fund/util/mongox"
+	"strings"
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -43,14 +45,14 @@ func InitKlines() {
 	}
 
 	funcMinute := func(strs ...string) {
-		symbol, id := strs[0], strs[1]
+		id := strs[0]
 		// find cache
-		if ok, _ := db.LimitDB.Exists(ctx, "kline:5m:"+id).Result(); ok > 0 {
+		if ok, _ := db.LimitDB.Exists(ctx, "kline:1m:"+id).Result(); ok > 0 {
 			return
 		}
 
 		// get kline
-		klines := getMinuteKline(symbol, id)
+		klines := getMinuteKline(id)
 		if klines == nil {
 			return
 		}
@@ -60,13 +62,13 @@ func InitKlines() {
 		coll.Remove(ctx, bson.M{"code": id})
 		coll.InsertMany(ctx, klines)
 
-		db.LimitDB.Set(ctx, "kline:5m:"+id, 1, time.Hour*6)
+		db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*6)
 	}
 
 	p := util.NewPool(2)
 	for _, i := range stocks {
 		p.NewTask(funcDaily, i.Symbol, i.Id)
-		p.NewTask(funcMinute, i.Symbol, i.Id)
+		p.NewTask(funcMinute, i.Id)
 	}
 	p.Wait()
 
@@ -75,7 +77,6 @@ func InitKlines() {
 
 func getKline(symbol string, Id string) []*model.Kline {
 	ts := time.Now().UnixMilli()
-
 	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol, ts)
 	body, _ := util.XueQiuAPI(url)
 
@@ -83,13 +84,30 @@ func getKline(symbol string, Id string) []*model.Kline {
 	node, _ := sonic.Get(body, "data")
 	raw, _ := node.Raw()
 
-	// decompress and unmarshal
-	var klines []*model.Kline
-	if err := util.DeCompressJSON([]byte(raw), &klines); err != nil {
+	var data struct {
+		Column []string `json:"column"`
+		Item   [][]any  `json:"item"`
+	}
+	// unmarshal
+	if err := util.UnmarshalJSON([]byte(raw), &data); err != nil {
+		log.Err(err)
 		return nil
 	}
 
-	// set
+	// struct to map
+	srcMap := make([]map[string]any, len(data.Item))
+	for i, item := range data.Item {
+		srcMap[i] = map[string]any{}
+
+		for c, col := range data.Column {
+			srcMap[i][col] = item[c]
+		}
+	}
+
+	var klines []*model.Kline
+	mapstructure.Decode(srcMap, klines)
+
+	// set code and time
 	layout := "2006/01/02"
 	for _, k := range klines {
 		k.Code = Id
@@ -98,29 +116,58 @@ func getKline(symbol string, Id string) []*model.Kline {
 	return klines
 }
 
-func getMinuteKline(symbol string, Id string) []*model.Kline {
-	ts := time.Now().UnixMilli()
+func getMinuteKline(id string) []*model.MinuteKline {
+	before, after, _ := strings.Cut(id, ".")
+	if after == "SS" {
+		id = before + ".SH"
+	}
 
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=%d&period=5m&count=-5000&indicator=kline", symbol, ts)
-	body, _ := util.XueQiuAPI(url)
+	url := fmt.Sprintf("https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&prod_code=%s&fields=tick_at,open_px,close_px,avg_px", id)
+	body, _ := util.GetAndRead(url)
+
+	var data struct {
+		Column []string
+		Item   [][]float64
+	}
 
 	// get node
-	node, _ := sonic.Get(body, "data")
-	raw, _ := node.Raw()
+	node, _ := sonic.Get(body, "data", "candle", id, "lines")
+	itemStr, _ := node.Raw()
 
-	// decompress and unmarshal
-	var klines []*model.Kline
-	if err := util.DeCompressJSON([]byte(raw), &klines); err != nil {
+	node, _ = sonic.Get(body, "data", "fields")
+	colStr, _ := node.Raw()
+
+	// unmarshal
+	if err := util.UnmarshalJSON([]byte(itemStr), &data.Item); err != nil {
+		log.Err(err)
+		return nil
+	}
+	if err := util.UnmarshalJSON([]byte(colStr), &data.Column); err != nil {
+		log.Err(err)
 		return nil
 	}
 
-	// set
-	for _, k := range klines {
-		k.Code = Id
-		timeStr := time.UnixMilli(k.TimeStamp).Format("2006/01/02 15:04")
-		k.Time, _ = time.Parse("2006/01/02 15:04", timeStr)
+	// data maps
+	dataMaps := make([]map[string][]float64, 0)
+
+	for _, item := range data.Item {
+		maps := map[string][]float64{}
+
+		for j, col := range data.Column {
+			_, ok := maps[col]
+			if ok {
+				maps[col] = append(maps[col], item[j])
+			}
+		}
+		dataMaps = append(dataMaps, maps)
 	}
-	return klines
+
+	var klines []*model.MinuteKline
+	mapstructure.Decode(dataMaps, klines)
+
+	fmt.Println(klines[0])
+
+	return nil
 }
 
 func loadKlines() {
@@ -138,9 +185,8 @@ func loadKlines() {
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
 				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
 				Sort(bson.M{"time": 1}).Do()).All(&data)
-			if data != nil {
-				cache.KlineMap.Store(id, data)
-			}
+
+			cache.KlineMap.Store(id, data)
 		}, code)
 	}
 	p.Wait()

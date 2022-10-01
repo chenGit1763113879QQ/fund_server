@@ -203,3 +203,12 @@ type Kline struct {
 	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" mapstructure:"hold_ratio_hk"`
 	NetVolHK    int64   `bson:"net_vol_hk,omitempty" mapstructure:"net_volume_hk"`
 }
+
+type MinuteKline struct {
+	Code      string
+	TradeDate time.Time
+	TimeStamp []int64   `mapstructure:"tick_at"`
+	Open      []float64 `mapstructure:"open_px"`
+	Close     []float64 `mapstructure:"close_px`
+	Avg       []float64 `mapstructure:"avg_px`
+}

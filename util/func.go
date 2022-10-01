@@ -3,7 +3,6 @@ package util
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"unicode"
 
 	"github.com/bytedance/sonic"
-	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 )
 
@@ -38,7 +36,7 @@ func Exp[T string | int | float64](isTrue bool, yes T, no T) T {
 func GetAndRead(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
-		log.Error().Msg(err.Error())
+		log.Err(err)
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -55,7 +53,7 @@ func XueQiuAPI(url string) ([]byte, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Error().Msg(err.Error())
+		log.Err(err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -104,54 +102,9 @@ func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
 func UnmarshalJSON(body []byte, data any, path ...any) error {
 	node, err := sonic.Get(body, path...)
 	if err != nil {
-		log.Warn().Msgf("unmarshal node err: %v", err)
+		log.Warn().Msgf("unmarshal err: %v", err)
 		return err
 	}
 	raw, _ := node.Raw()
 	return sonic.UnmarshalString(raw, &data)
-}
-
-/*
-	DeCompressJson and use mapstructure to decode
-	1. {
-		"column": ["a", "b", "c"],
-		"item": [
-			[1, 2, 3],
-			[4, 5, 6]
-		]
-	}
-	2. []map[string]any[
-		{"a": 1, "b": 2, "c": 3},
-		{"a": 4, "b": 5, "c": 6}
-	]
-	3. struct dst
-*/
-func DeCompressJSON(src []byte, dst any) error {
-	if src == nil && dst == nil {
-		err := errors.New("src or dst is nil")
-		log.Error().Msg(err.Error())
-		return errors.New(err.Error())
-	}
-
-	var data struct {
-		Column []string `json:"column"`
-		Item   [][]any  `json:"item"`
-	}
-	// unmarshal
-	if err := UnmarshalJSON(src, &data); err != nil {
-		log.Error().Msg(err.Error())
-		return err
-	}
-
-	// map
-	srcMap := make([]map[string]any, len(data.Item))
-	for i, item := range data.Item {
-		srcMap[i] = map[string]any{}
-
-		for c, col := range data.Column {
-			srcMap[i][col] = item[c]
-		}
-	}
-
-	return mapstructure.Decode(srcMap, dst)
 }
