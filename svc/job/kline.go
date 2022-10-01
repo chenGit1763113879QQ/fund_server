@@ -2,11 +2,9 @@ package job
 
 import (
 	"fmt"
-	"fund/cache"
 	"fund/db"
 	"fund/model"
 	"fund/util"
-	"fund/util/mongox"
 	"strings"
 	"time"
 
@@ -29,7 +27,7 @@ func InitKlines() {
 	}
 	p.Wait()
 
-	log.Info().Msg("init kline success.")
+	log.Info().Msgf("init kline[%d] success", len(stocks))
 }
 
 func getKline(strs ...string) {
@@ -39,7 +37,7 @@ func getKline(strs ...string) {
 		return
 	}
 
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol, time.Now().UnixMilli())
+	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&type=before&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol, time.Now().UnixMilli())
 	body, _ := util.XueQiuAPI(url)
 
 	var data struct {
@@ -72,7 +70,7 @@ func getKline(strs ...string) {
 	// save
 	coll := db.KlineDB.Collection(util.Md5Code(id))
 	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-	coll.Remove(ctx, bson.M{"code": id})
+	coll.RemoveAll(ctx, bson.M{"code": id})
 	coll.InsertMany(ctx, klines)
 
 	db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*12)
@@ -110,7 +108,7 @@ func getMinuteKline(strs ...string) {
 	util.UnmarshalJSON(body, &data.Item, "data", "candle", id, "lines")
 
 	// coll
-	db.Minute.Remove(ctx, bson.M{"code": id})
+	db.Minute.RemoveAll(ctx, bson.M{"code": id})
 	bulk := db.Minute.Bulk()
 
 	kline := &model.MinuteKline{
@@ -143,28 +141,4 @@ func getMinuteKline(strs ...string) {
 
 	bulk.Run(ctx)
 	db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*6)
-}
-
-func loadKlines() {
-	log.Debug().Msg("kline start init")
-	t, _ := time.Parse("2006/01/02", "2017/09/01")
-
-	// run
-	p := util.NewPool()
-	for _, code := range getCNStocks() {
-		p.NewTask(func(strs ...string) {
-			id := strs[0]
-			var data []*model.Kline
-
-			// get kline
-			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
-				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
-				Sort(bson.M{"time": 1}).Do()).All(&data)
-
-			cache.KlineMap.Store(id, data)
-		}, code)
-	}
-	p.Wait()
-
-	log.Debug().Msgf("init kline[%d] success", cache.KlineMap.Len())
 }

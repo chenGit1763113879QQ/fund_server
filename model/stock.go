@@ -178,7 +178,7 @@ type Kline struct {
 	High   float64
 	Low    float64
 	Close  float64
-	Vol    int64
+	Vol    int64 `mapstructure:"volume"`
 	Amount float64
 
 	MainNet float64 `bson:",omitempty"`

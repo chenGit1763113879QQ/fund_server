@@ -60,5 +60,5 @@ func main() {
 		midware.Error(c, errors.New("page not found"), http.StatusNotFound)
 	})
 
-	panic(r.Run("127.0.0.1:10888"))
+	panic(r.Run("0.0.0.0:10888"))
 }

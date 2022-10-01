@@ -6,6 +6,7 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
+	"fund/util/mongox"
 	"strconv"
 	"time"
 
@@ -15,6 +16,8 @@ import (
 )
 
 func PredictStock() {
+	loadKlines()
+
 	p := util.NewPool()
 	for _, k := range getCNStocks() {
 		p.NewTask(predict, k, "30")
@@ -22,6 +25,36 @@ func PredictStock() {
 	}
 	p.Wait()
 	log.Debug().Msg("predict kline finished")
+}
+
+func loadKlines() {
+	t, _ := time.Parse("2006/01/02", "2017/06/01")
+
+	p := util.NewPool()
+	for _, code := range getCNStocks() {
+		p.NewTask(func(strs ...string) {
+			id := strs[0]
+			var data []*model.Kline
+
+			// get kline
+			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
+				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
+				Sort(bson.M{"time": 1}).Do()).
+				All(&data)
+
+			closeArr := make([]float64, len(data))
+			timeArr := make([]time.Time, len(data))
+			for i, k := range data {
+				closeArr[i] = k.Close
+				timeArr[i] = k.Time
+			}
+			cache.PreKlineMap.Store(id, closeArr, timeArr)
+
+		}, code)
+	}
+	p.Wait()
+
+	log.Info().Msgf("init predict kline[%d] success", cache.PreKlineMap.Len())
 }
 
 func predict(strs ...string) {
@@ -34,54 +67,55 @@ func predict(strs ...string) {
 		return
 	}
 
-	src := cache.KlineMap.Load(code)
-	if len(src) < days {
+	// src
+	srcClose, _ := cache.PreKlineMap.Load(code)
+	if len(srcClose) < days {
 		return
 	}
-
-	var matchClose []float64
-
-	// oneness src
-	srcClose := closeIndex(src, len(src)-days, len(src))
+	srcClose = srcClose[len(srcClose)-days:]
 	oneness(srcClose)
+
+	// 趋势
+	trend := srcClose[0] > srcClose[len(srcClose)-1]
 
 	// results
 	bulk := db.Predict.Bulk()
 
-	cache.KlineMap.Range(func(matchCode string, match []*model.Kline) {
+	cache.PreKlineMap.Range(func(matchCode string, match []float64, times []time.Time) {
 		if len(match) < days {
 			return
 		}
+
 		// rolling window
 		for i := 0; i+days+5 < len(match); i++ {
+			// 判断趋势是否相同
+			if tr := match[i] > match[i+days]; tr != trend {
+				continue
+			}
 
-			// oneness match
-			matchClose = closeIndex(match, i, i+days)
+			// match
+			matchClose := make([]float64, days)
+			copy(matchClose, match[i:i+days])
+
 			oneness(matchClose)
-
-			// cal std
 			res := std(srcClose, matchClose)
 
-			if res <= 0.01 {
+			if res < 0.01 {
 				bulk.InsertOne(bson.M{
-					"src_code": code, "match_code": matchCode,
-					"match_date": match[i].Time, "period": days, "std": res,
+					"src_code":   code,
+					"match_code": matchCode,
+					"start_date": times[i],
+					"end_date":   times[i+days],
+					"period":     days,
+					"std":        res,
 				})
 			}
 		}
 	})
-	bulk.Remove(bson.M{"src_code": code, "period": days})
+	bulk.RemoveAll(bson.M{"src_code": code, "period": days})
 	bulk.Run(ctx)
 
 	db.LimitDB.Set(ctx, fmt.Sprintf("predict_%d:%s", days, code), "1", time.Hour*12)
-}
-
-func closeIndex(k []*model.Kline, start int, end int) []float64 {
-	arr := make([]float64, end-start)
-	for i := start; i < end; i++ {
-		arr[i-start] = k[i].Close
-	}
-	return arr
 }
 
 func oneness(arr []float64) {
@@ -92,6 +126,10 @@ func oneness(arr []float64) {
 }
 
 func std(arr1 []float64, arr2 []float64) float64 {
+	if len(arr1) != len(arr2) {
+		log.Error().Msg("std error: len(arr1) != len(arr2)")
+		return 999
+	}
 	for i := range arr2 {
 		arr2[i] -= arr1[i]
 	}

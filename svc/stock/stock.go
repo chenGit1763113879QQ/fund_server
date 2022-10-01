@@ -103,7 +103,6 @@ func GetStockList(c *gin.Context) {
 
 func Search(c *gin.Context) {
 	input := c.Query("input") + ".*"
-
 	var data []bson.M
 
 	db.Stock.Find(ctx, bson.M{
@@ -151,17 +150,17 @@ func AllBKDetails(c *gin.Context) {
 func PredictKline(c *gin.Context) {
 	data := make([]bson.M, 0)
 	db.Predict.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"p_code": c.Query("code")}).
-		Sort(bson.M{"std": -1}).
-		Limit(10).
-		Lookup("stock", "p_code", "_id", "p_code").
-		Lookup("stock", "m_code", "_id", "m_code").
+		Match(bson.M{"src_code": c.Query("code")}).
+		Sort(bson.M{"std": -1}).Limit(3).
+		Lookup("stock", "src_code", "_id", "src_code").
+		Lookup("stock", "match_code", "_id", "match_code").
 		Project(bson.M{
-			"_id": 0, "m_days": 1, "std": 1, "m_date": 1,
-			"p_code": bson.M{"_id": 1, "name": 1},
-			"m_code": bson.M{"_id": 1, "name": 1},
+			"_id": 0, "period": 1, "std": 1,
+			"start_date": 1, "end_date": 1,
+			"src_code": 1, "match_code": 1,
 		}).
-		Unwind("$p_code").Unwind("$m_code").Do()).All(&data)
+		Unwind("$src_code").
+		Unwind("$match_code").Do()).All(&data)
 
 	midware.Success(c, data)
 }

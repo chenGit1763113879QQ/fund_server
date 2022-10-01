@@ -10,6 +10,7 @@ import (
 	"unicode"
 
 	"github.com/bytedance/sonic"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
 )
 
@@ -100,12 +101,6 @@ func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
 
 // Unmarshal JSON
 func UnmarshalJSON(body []byte, data any, path ...any) error {
-	node, err := sonic.Get(body, path...)
-	if err != nil {
-		log.Warn().Msgf("unmarshal err: %v", err)
-		return err
-	}
-
-	raw, _ := node.Raw()
-	return sonic.UnmarshalString(raw, &data)
+	node := jsoniter.Get(body, path...)
+	return sonic.UnmarshalString(node.ToString(), &data)
 }
