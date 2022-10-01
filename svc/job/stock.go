@@ -6,7 +6,6 @@ import (
 	"fund/model"
 	"fund/util"
 	"math"
-	"strconv"
 	"strings"
 	"time"
 
@@ -101,60 +100,11 @@ func updateMinute(s []*model.Stock, m *model.Market) {
 	go bulk.Run(ctx)
 }
 
-func getNews() {
-	url := "https://baoer-api.xuangubao.cn/api/v6/message/newsflash?limit=1000&subj_ids=10,723,35"
-
-	var stocks []*struct {
-		Code string `bson:"_id"`
-		Name string `bson:"name"`
-	}
-	db.Stock.Find(ctx, bson.M{}).All(&stocks)
-
-	// 中文名去除后缀
-	for _, s := range stocks {
-		if util.IsChinese(s.Name) {
-			s.Name = strings.Split(s.Name, "-")[0]
-		}
-	}
-
-	var data []struct {
-		Id       int    `json:"id"`
-		Title    string `json:"title"`
-		Content  string `json:"summary"`
-		CreateAt int64  `json:"created_at"`
-	}
-
-	// get news
-	body, _ := util.GetAndRead(url)
-	if err := util.UnmarshalJSON(body, &data, "data", "messages"); err != nil {
-		log.Error().Msg(err.Error())
-	}
-
-	for _, n := range data {
-		// 匹配
-		codes := make([]string, 0)
-		for _, s := range stocks {
-			if strings.Contains(n.Title, s.Name) && s.Name != "证券" {
-				if len(codes) < 5 {
-					codes = append(codes, s.Code)
-				}
-			}
-		}
-
-		db.Article.InsertOne(ctx, &model.Article{
-			Id:       strconv.Itoa(n.Id),
-			Title:    n.Title,
-			Content:  n.Content,
-			CreateAt: time.Unix(n.CreateAt, 0).Local(),
-			Tag:      codes,
-		})
-	}
-}
-
 func getCNStocks() []string {
 	var id []string
 	db.Stock.Find(ctx, bson.M{
-		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK, "mc": bson.M{"$gt": 100 * math.Pow(10, 8)},
+		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK,
+		"mc": bson.M{"$gt": 50 * math.Pow(10, 8)},
 	}).Distinct("_id", &id)
 	return id
 }

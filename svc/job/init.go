@@ -27,9 +27,6 @@ func init() {
 		go getRealStock(p)
 	}
 
-	// news
-	util.GoJob(getNews, time.Minute, time.Second*3)
-
 	// market status
 	util.GoJob(getMarketStatus, time.Second)
 
@@ -44,7 +41,6 @@ func init() {
 	// kline & predict
 	util.GoJob(func() {
 		InitKlines()
-		return
 
 		loadKlines()
 

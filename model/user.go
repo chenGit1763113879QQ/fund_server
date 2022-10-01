@@ -1,8 +1,6 @@
 package model
 
 import (
-	"time"
-
 	"github.com/qiniu/qmgo/field"
 )
 
@@ -22,12 +20,4 @@ type RegisterForm struct {
 type LoginForm struct {
 	Email    string `json:"email" binding:"email"`
 	Password string `json:"password" binding:"min=6,max=16"`
-}
-
-type Article struct {
-	Id       string    `bson:"_id"`
-	Title    string    `json:"title"`
-	Content  string    `json:"content"`
-	CreateAt time.Time `bson:"createAt"`
-	Tag      []string  `json:"tag"`
 }

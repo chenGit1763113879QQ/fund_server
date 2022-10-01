@@ -11,16 +11,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// 生产环境
 const (
-// redisHost    = "redis:6379"
-// mongoHost    = "mongo:27017"
-)
-
-// 本地环境
-const (
-	redisHost = "localhost:6380"
-	mongoHost = "localhost:27017"
+	redisHost = "192.168.0.100:6380"
+	mongoHost = "192.168.0.100:27017"
 )
 
 var (
@@ -30,16 +23,15 @@ var (
 
 	FundDB   *qmgo.Database
 	KlineDB  *qmgo.Database
-	MKlineDB *qmgo.Database
 	BackDB   *qmgo.Database
 	MinuteDB *qmgo.Database
 
 	Stock   *qmgo.Collection
 	Predict *qmgo.Collection
 	Fina    *qmgo.Collection
+	Minute  *qmgo.Collection
 
-	User    *qmgo.Collection
-	Article *qmgo.Collection
+	User *qmgo.Collection
 )
 
 // cache
@@ -60,7 +52,6 @@ func init() {
 	FundDB = client.Database("fund")
 	BackDB = client.Database("back")
 	KlineDB = client.Database("kline")
-	MKlineDB = client.Database("mKline")
 	MinuteDB = client.Database("minute")
 
 	Stock = FundDB.Collection("stock")
@@ -74,8 +65,8 @@ func init() {
 	User = FundDB.Collection("user")
 	User.EnsureIndexes(ctx, []string{"email", "name"}, nil)
 
-	Article = FundDB.Collection("article")
-	Article.EnsureIndexes(ctx, []string{"uid,title"}, []string{"createAt"})
+	Minute = FundDB.Collection("minute")
+	Minute.EnsureIndexes(ctx, []string{"code,trade_date"}, nil)
 
 	// Redis
 	LimitDB = redis.NewClient(&redis.Options{

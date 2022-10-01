@@ -49,7 +49,7 @@ func GetAndRead(url string) ([]byte, error) {
 func XueQiuAPI(url string) ([]byte, error) {
 	// add token
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
-	req.Header.Add("cookie", "xq_a_token=80b283f898285a9e82e2e80cf77e5a4051435344")
+	req.Header.Add("cookie", "xq_a_token=25916c3bfec27272745f6070d664a48d4b10d322")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -105,6 +105,7 @@ func UnmarshalJSON(body []byte, data any, path ...any) error {
 		log.Warn().Msgf("unmarshal err: %v", err)
 		return err
 	}
+
 	raw, _ := node.Raw()
 	return sonic.UnmarshalString(raw, &data)
 }

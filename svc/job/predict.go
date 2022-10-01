@@ -5,6 +5,8 @@ import (
 	"fund/cache"
 	"fund/db"
 	"fund/model"
+	"fund/util"
+	"strconv"
 	"time"
 
 	"github.com/go-gota/gota/series"
@@ -13,14 +15,19 @@ import (
 )
 
 func PredictStock() {
+	p := util.NewPool()
 	for _, k := range getCNStocks() {
-		predict(k, 30)
-		predict(k, 60)
+		p.NewTask(predict, k, "30")
+		p.NewTask(predict, k, "60")
 	}
+	p.Wait()
 	log.Debug().Msg("predict kline finished")
 }
 
-func predict(code string, days int) {
+func predict(strs ...string) {
+	code := strs[0]
+	days, _ := strconv.Atoi(strs[1])
+
 	// cache
 	exist, _ := db.LimitDB.Exists(ctx, fmt.Sprintf("predict_%d:%s", days, code)).Result()
 	if exist > 0 {

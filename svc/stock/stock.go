@@ -104,10 +104,7 @@ func GetStockList(c *gin.Context) {
 func Search(c *gin.Context) {
 	input := c.Query("input") + ".*"
 
-	var data struct {
-		Arts  []bson.M `json:"arts"`
-		Stock []bson.M `json:"stock"`
-	}
+	var data []bson.M
 
 	db.Stock.Find(ctx, bson.M{
 		"$or": bson.A{
@@ -119,11 +116,7 @@ func Search(c *gin.Context) {
 			bson.M{"lazy_pinyin": bson.M{"$regex": input, "$options": "i"}},
 			bson.M{"pinyin": bson.M{"$regex": input, "$options": "i"}},
 		},
-	}).Select(listOpt).Sort("marketType", "-type", "-amount").Limit(10).All(&data.Stock)
-
-	// articles
-	db.Article.Find(ctx, bson.M{"title": bson.M{"$regex": input, "$options": "i"}}).
-		Sort("-createAt").Limit(8).All(&data.Arts)
+	}).Select(listOpt).Sort("marketType", "-type", "-amount").Limit(10).All(&data)
 
 	midware.Success(c, data)
 }

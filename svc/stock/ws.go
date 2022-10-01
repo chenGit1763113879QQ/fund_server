@@ -31,13 +31,6 @@ func ConnectItems(c *gin.Context) {
 	ws.WriteJson(bson.M{"items": items})
 	go ws.WriteJson(bson.M{"minute": GetMinute(code)})
 
-	// 最新资讯
-	go func() {
-		var news bson.M
-		db.Article.Find(ctx, bson.M{"tag": code, "type": 2}).Sort("-createAt").One(&news)
-		ws.WriteJson(bson.M{"news": news})
-	}()
-
 	job.Cond.L.Lock()
 	// 更新
 	for ws.Err == nil {

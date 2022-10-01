@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	zerolog.TimeFieldFormat = "01/02 15:04:05"
+	zerolog.TimeFieldFormat = "06/01/02 15:04:05"
 	zerolog.MessageFieldName = "msg"
 }
 
@@ -55,10 +55,6 @@ func main() {
 
 	api.Group("/market").
 		GET("/bk", stock.AllBKDetails)
-
-	api.Group("/article").
-		GET("/:id", user.GetArticle).
-		GET("/list/news", user.GetNews)
 
 	r.NoRoute(func(c *gin.Context) {
 		midware.Error(c, errors.New("page not found"), http.StatusNotFound)

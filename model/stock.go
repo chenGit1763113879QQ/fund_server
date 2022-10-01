@@ -206,8 +206,8 @@ type Kline struct {
 
 type MinuteKline struct {
 	Code      string
-	TradeDate time.Time
-	TimeStamp []int64   `mapstructure:"tick_at"`
+	TradeDate time.Time `bson:"trade_date"`
+	Time      []int64   `bson:"time" mapstructure:"tick_at"`
 	Open      []float64 `mapstructure:"open_px"`
 	Close     []float64 `mapstructure:"close_px`
 	Avg       []float64 `mapstructure:"avg_px`

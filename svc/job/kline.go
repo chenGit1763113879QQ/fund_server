@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,78 +22,33 @@ func InitKlines() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
 
-	funcDaily := func(strs ...string) {
-		symbol, id := strs[0], strs[1]
-		// find cache
-		if ok, _ := db.LimitDB.Exists(ctx, "kline:day:"+id).Result(); ok > 0 {
-			return
-		}
-
-		// get kline
-		klines := getKline(symbol, id)
-		if klines == nil {
-			return
-		}
-
-		coll := db.KlineDB.Collection(util.Md5Code(id))
-		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-		coll.Remove(ctx, bson.M{"code": id})
-		coll.InsertMany(ctx, klines)
-
-		db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*12)
-	}
-
-	funcMinute := func(strs ...string) {
-		id := strs[0]
-		// find cache
-		if ok, _ := db.LimitDB.Exists(ctx, "kline:1m:"+id).Result(); ok > 0 {
-			return
-		}
-
-		// get kline
-		klines := getMinuteKline(id)
-		if klines == nil {
-			return
-		}
-
-		coll := db.MKlineDB.Collection(util.Md5Code(id))
-		coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-		coll.Remove(ctx, bson.M{"code": id})
-		coll.InsertMany(ctx, klines)
-
-		db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*6)
-	}
-
-	p := util.NewPool(2)
+	p := util.NewPool(4)
 	for _, i := range stocks {
-		p.NewTask(funcDaily, i.Symbol, i.Id)
-		p.NewTask(funcMinute, i.Id)
+		p.NewTask(getKline, i.Symbol, i.Id)
+		p.NewTask(getMinuteKline, i.Id)
 	}
 	p.Wait()
 
 	log.Info().Msg("init kline success.")
 }
 
-func getKline(symbol string, Id string) []*model.Kline {
-	ts := time.Now().UnixMilli()
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol, ts)
-	body, _ := util.XueQiuAPI(url)
+func getKline(strs ...string) {
+	symbol, id := strs[0], strs[1]
+	// find cache
+	if ok, _ := db.LimitDB.Exists(ctx, "kline:day:"+id).Result(); ok > 0 {
+		return
+	}
 
-	// get node
-	node, _ := sonic.Get(body, "data")
-	raw, _ := node.Raw()
+	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol, time.Now().UnixMilli())
+	body, _ := util.XueQiuAPI(url)
 
 	var data struct {
 		Column []string `json:"column"`
 		Item   [][]any  `json:"item"`
 	}
-	// unmarshal
-	if err := util.UnmarshalJSON([]byte(raw), &data); err != nil {
-		log.Err(err)
-		return nil
-	}
+	util.UnmarshalJSON(body, &data, "data")
 
-	// struct to map
+	// decode map
 	srcMap := make([]map[string]any, len(data.Item))
 	for i, item := range data.Item {
 		srcMap[i] = map[string]any{}
@@ -105,24 +59,45 @@ func getKline(symbol string, Id string) []*model.Kline {
 	}
 
 	var klines []*model.Kline
-	mapstructure.Decode(srcMap, klines)
-
-	// set code and time
-	layout := "2006/01/02"
-	for _, k := range klines {
-		k.Code = Id
-		k.Time, _ = time.Parse(layout, time.UnixMilli(k.TimeStamp).Format(layout))
+	mapstructure.Decode(srcMap, &klines)
+	if klines == nil {
+		return
 	}
-	return klines
+
+	for _, k := range klines {
+		k.Code = id
+		k.Time = time.UnixMilli(k.TimeStamp)
+	}
+
+	// save
+	coll := db.KlineDB.Collection(util.Md5Code(id))
+	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
+	coll.Remove(ctx, bson.M{"code": id})
+	coll.InsertMany(ctx, klines)
+
+	db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*12)
 }
 
-func getMinuteKline(id string) []*model.MinuteKline {
+func getMinuteKline(strs ...string) {
+	id := strs[0]
+
+	var symbol string
 	before, after, _ := strings.Cut(id, ".")
-	if after == "SS" {
-		id = before + ".SH"
+	switch after {
+	case "SH":
+		symbol = before + ".SS"
+	case "SZ":
+		symbol = id
+	default:
+		return
 	}
 
-	url := fmt.Sprintf("https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&prod_code=%s&fields=tick_at,open_px,close_px,avg_px", id)
+	// find cache
+	if ok, _ := db.LimitDB.Exists(ctx, "kline:1m:"+id).Result(); ok > 0 {
+		return
+	}
+
+	url := fmt.Sprintf("https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&prod_code=%s&fields=tick_at,open_px,close_px,avg_px", symbol)
 	body, _ := util.GetAndRead(url)
 
 	var data struct {
@@ -130,44 +105,44 @@ func getMinuteKline(id string) []*model.MinuteKline {
 		Item   [][]float64
 	}
 
-	// get node
-	node, _ := sonic.Get(body, "data", "candle", id, "lines")
-	itemStr, _ := node.Raw()
-
-	node, _ = sonic.Get(body, "data", "fields")
-	colStr, _ := node.Raw()
-
 	// unmarshal
-	if err := util.UnmarshalJSON([]byte(itemStr), &data.Item); err != nil {
-		log.Err(err)
-		return nil
-	}
-	if err := util.UnmarshalJSON([]byte(colStr), &data.Column); err != nil {
-		log.Err(err)
-		return nil
-	}
+	util.UnmarshalJSON(body, &data.Column, "data", "fields")
+	util.UnmarshalJSON(body, &data.Item, "data", "candle", id, "lines")
 
-	// data maps
-	dataMaps := make([]map[string][]float64, 0)
+	// coll
+	db.Minute.Remove(ctx, bson.M{"code": id})
+	bulk := db.Minute.Bulk()
+
+	kline := &model.MinuteKline{
+		Code:  id,
+		Time:  make([]int64, 0),
+		Open:  make([]float64, 0),
+		Close: make([]float64, 0),
+		Avg:   make([]float64, 0),
+	}
 
 	for _, item := range data.Item {
-		maps := map[string][]float64{}
+		t := time.Unix(int64(item[2]), 0)
 
-		for j, col := range data.Column {
-			_, ok := maps[col]
-			if ok {
-				maps[col] = append(maps[col], item[j])
+		if !kline.TradeDate.IsZero() && t.Day() > kline.TradeDate.Day() {
+			bulk.InsertOne(kline)
+			kline = &model.MinuteKline{
+				Code:  id,
+				Time:  make([]int64, 0),
+				Open:  make([]float64, 0),
+				Close: make([]float64, 0),
+				Avg:   make([]float64, 0),
 			}
 		}
-		dataMaps = append(dataMaps, maps)
+		kline.TradeDate = t
+		kline.Open = append(kline.Open, item[0])
+		kline.Close = append(kline.Close, item[1])
+		kline.Time = append(kline.Time, int64(item[2]))
+		kline.Avg = append(kline.Avg, item[3])
 	}
 
-	var klines []*model.MinuteKline
-	mapstructure.Decode(dataMaps, klines)
-
-	fmt.Println(klines[0])
-
-	return nil
+	bulk.Run(ctx)
+	db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*6)
 }
 
 func loadKlines() {
