@@ -9,6 +9,7 @@ import (
 	"fund/util"
 	"fund/util/mongox"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qiniu/qmgo"
@@ -149,9 +150,11 @@ func AllBKDetails(c *gin.Context) {
 
 func PredictKline(c *gin.Context) {
 	data := make([]bson.M, 0)
+	period, _ := strconv.Atoi(c.Query("period"))
+
 	db.Predict.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"src_code": c.Query("code")}).
-		Sort(bson.M{"std": -1}).Limit(3).
+		Match(bson.M{"src_code": c.Query("code"), "period": period}).
+		Sort(bson.M{"std": 1}).
 		Lookup("stock", "src_code", "_id", "src_code").
 		Lookup("stock", "match_code", "_id", "match_code").
 		Project(bson.M{

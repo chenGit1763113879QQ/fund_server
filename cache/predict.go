@@ -19,9 +19,7 @@ var PreKlineMap = &PreMap{
 func (s *PreMap) Load(key string) ([]float64, []time.Time) {
 	s.RLock()
 	defer s.RUnlock()
-	c := s.close[key]
-	t := s.time[key]
-	return c, t
+	return s.close[key], s.time[key]
 }
 
 func (s *PreMap) Store(key string, close []float64, times []time.Time) {

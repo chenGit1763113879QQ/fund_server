@@ -20,7 +20,7 @@ func InitKlines() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
 
-	p := util.NewPool(4)
+	p := util.NewPool(6)
 	for _, i := range stocks {
 		p.NewTask(getKline, i.Symbol, i.Id)
 		p.NewTask(getMinuteKline, i.Id)
@@ -104,7 +104,9 @@ func getMinuteKline(strs ...string) {
 	}
 
 	// unmarshal
-	util.UnmarshalJSON(body, &data.Column, "data", "fields")
+	if err := util.UnmarshalJSON(body, &data.Column, "data", "fields"); err != nil {
+		log.Error().Msg(err.Error())
+	}
 	util.UnmarshalJSON(body, &data.Item, "data", "candle", id, "lines")
 
 	// coll
@@ -123,7 +125,13 @@ func getMinuteKline(strs ...string) {
 		t := time.Unix(int64(item[2]), 0)
 
 		if !kline.TradeDate.IsZero() && t.Day() > kline.TradeDate.Day() {
+			// 归一化
+			factor := kline.Open[0]
+			oneness(kline.Close, factor)
+			oneness(kline.Open, factor)
+			oneness(kline.Avg, factor)
 			bulk.InsertOne(kline)
+
 			kline = &model.MinuteKline{
 				Code:  id,
 				Time:  make([]int64, 0),

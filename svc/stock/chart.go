@@ -1,7 +1,6 @@
 package stock
 
 import (
-	"errors"
 	"fund/db"
 	"fund/midware"
 	"fund/svc/job"
@@ -96,14 +95,6 @@ func GetKline(c *gin.Context) {
 	}
 	if err := c.ShouldBind(&req); err != nil {
 		midware.Error(c, err)
-		return
-	}
-
-	var items bson.M
-
-	db.Stock.Find(ctx, bson.M{"_id": req.Code}).One(&items)
-	if items == nil {
-		midware.Error(c, errors.New("code not found"))
 		return
 	}
 
