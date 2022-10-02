@@ -126,14 +126,12 @@ func GetKline(c *gin.Context) {
 			"high":        bson.M{"$max": "$high"},
 			"low":         bson.M{"$min": "$low"},
 			"main_net":    bson.M{"$sum": "$main_net"},
-			"net":         bson.M{"$sum": "$net"},
 			"vol":         bson.M{"$sum": "$vol"},
 			"amount":      bson.M{"$sum": "$amount"},
 			"pct_chg":     bson.M{"$sum": "$pct_chg"},
 			"balance":     bson.M{"$last": "$balance"},
 			"winner_rate": bson.M{"$last": "$winner_rate"},
 			"ratio":       bson.M{"$last": "$hold_ratio_cn"},
-			"net_vol_cn":  bson.M{"$sum": "$net_vol_cn"},
 		}).Sort(bson.M{"time": 1}).
 		Do()).All(&data)
 

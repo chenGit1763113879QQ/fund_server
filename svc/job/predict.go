@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-gota/gota/series"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
+	"gonum.org/v1/gonum/stat"
 )
 
 func PredictStock() {
@@ -28,7 +28,7 @@ func PredictStock() {
 }
 
 func loadKlines() {
-	t, _ := time.Parse("2006/01/02", "2017/01/01")
+	t, _ := time.Parse("2006/01/02", "2016/01/01")
 
 	p := util.NewPool()
 	for _, code := range getCNStocks() {
@@ -45,7 +45,7 @@ func loadKlines() {
 			priceArr := make([]float64, len(data))
 			timeArr := make([]time.Time, len(data))
 			for i, k := range data {
-				priceArr[i] = (k.Close + k.Open + k.High + k.Low) / 4.0
+				priceArr[i] = k.WinnerRate
 				timeArr[i] = k.Time
 			}
 			cache.PreKlineMap.Store(id, priceArr, timeArr)
@@ -68,12 +68,11 @@ func predict(strs ...string) {
 	}
 
 	// src
-	srcClose, _ := cache.PreKlineMap.Load(code)
-	if len(srcClose) < days {
+	src, _ := cache.PreKlineMap.Load(code)
+	if len(src) < days {
 		return
 	}
-	srcClose = srcClose[len(srcClose)-days:]
-	oneness(srcClose)
+	src = src[len(src)-days:]
 
 	// results
 	db.Predict.RemoveAll(ctx, bson.M{"src_code": code, "period": days})
@@ -85,30 +84,32 @@ func predict(strs ...string) {
 		}
 
 		// rolling window
-		for i := 0; i+days+20 < len(match); i += 2 {
-			// match
-			temp := make([]float64, days)
-			copy(temp, match[i:i+days])
+		for i := 0; i+days+20 < len(match); i++ {
+			res := std(src, match[i:i+days])
 
-			oneness(temp)
-
-			res := std(srcClose, temp)
 			t := bson.M{
-				"src_code": code, "match_code": matchCode,
+				"src_code":   code,
+				"match_code": matchCode,
 				"start_date": times[i].Format("2006/01/02"),
-				"period":     days, "std": res,
+				"period":     days,
+				"limit":      days + 20,
+				"std":        res,
 			}
-			if len(results) < 10 {
-				// append
+			if len(results) < 50 {
 				results = append(results, t)
 
 			} else {
-				// sort
-				for i := range results {
-					if results[i]["std"].(float64) > res {
-						results[i] = t
-						break
+				// 替换最大的标准差
+				max, index := res, -1
+
+				for i, item := range results {
+					if item["std"].(float64) > max {
+						max = item["std"].(float64)
+						index = i
 					}
+				}
+				if index >= 0 {
+					results[index] = t
 				}
 			}
 		}
@@ -126,13 +127,17 @@ func oneness(arr []float64, factors ...float64) {
 
 	for i := range arr {
 		arr[i] /= factor
-		arr[i] *= 100.0
+		arr[i] *= 100
 	}
 }
 
 func std(arr1 []float64, arr2 []float64) float64 {
-	for i := range arr2 {
-		arr2[i] -= arr1[i]
+	if len(arr1) != len(arr2) {
+		panic("arr1 != arr2")
 	}
-	return series.Floats(arr2).StdDev()
+	arr := make([]float64, len(arr1))
+	for i := range arr {
+		arr[i] = arr1[i] - arr2[i]
+	}
+	return stat.StdDev(arr, nil)
 }

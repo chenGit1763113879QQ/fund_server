@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 )
 
@@ -63,6 +65,61 @@ func XueQiuAPI(url string) ([]byte, error) {
 	return body, nil
 }
 
+// tushare api
+func TushareApi(api string, params any, fields any, data any) error {
+	// set params
+	req := map[string]any{
+		"api_name": api,
+		"token":    "8dbaa93be7f8d09210ca9cb0843054417e2820203201c0f3f7643410",
+	}
+	if params != nil {
+		req["params"] = params
+	}
+	if fields != nil {
+		req["fields"] = fields
+	}
+	param, _ := sonic.Marshal(req)
+
+	// post request
+	res, err := http.Post("https://api.tushare.pro", "application/json", bytes.NewReader(param))
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+
+	body, _ := ioutil.ReadAll(res.Body)
+
+	var src struct {
+		Data struct {
+			Head  []string `json:"fields"`
+			Items [][]any  `json:"items"`
+		} `json:"data"`
+		Msg string `json:"msg"`
+	}
+
+	if err = UnmarshalJSON(body, &src); err != nil {
+		return err
+	}
+	if src.Msg != "" {
+		log.Warn().Msgf("tushare msg: %s", src.Msg)
+	}
+
+	return DecodeJSONItems(src.Data.Head, src.Data.Items, &data)
+}
+
+func DecodeJSONItems(columns []string, items [][]any, data any) error {
+	// decode map
+	srcMap := make([]map[string]any, len(items))
+	for i, item := range items {
+		srcMap[i] = map[string]any{}
+
+		for c, col := range columns {
+			srcMap[i][col] = item[c]
+		}
+	}
+	return mapstructure.Decode(srcMap, &data)
+}
+
 func Md5Code(code string) string {
 	m := md5.New()
 	m.Write([]byte(code))
@@ -78,6 +135,7 @@ func IsChinese(str string) bool {
 	return false
 }
 
+// Mean 均值
 func Mean[T int | int64 | float64](arr []T) float64 {
 	var sum T
 	for i := range arr {

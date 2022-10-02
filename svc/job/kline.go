@@ -8,24 +8,40 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
 func InitKlines() {
 	var stocks []struct {
-		Id     string `bson:"_id"`
-		Symbol string
+		MarketType util.Code `bson:"marketType"`
+		Id         string    `bson:"_id"`
+		Symbol     string
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
 
 	p := util.NewPool(6)
+	// kline
 	for _, i := range stocks {
 		p.NewTask(getKline, i.Symbol, i.Id)
-		p.NewTask(getMinuteKline, i.Id)
+
+		if i.MarketType == util.MARKET_CN {
+			p.NewTask(getMinuteKline, i.Id)
+		}
 	}
 	p.Wait()
+
+	// tushare
+	for _, i := range stocks {
+		if i.MarketType == util.MARKET_CN {
+			// find cache
+			if ok, _ := db.LimitDB.Exists(ctx, "winner_rate:"+i.Id).Result(); ok > 0 {
+				continue
+			}
+			go getWinRate(i.Id)
+			time.Sleep(time.Minute / 200)
+		}
+	}
 
 	log.Info().Msgf("init kline[%d] success", len(stocks))
 }
@@ -40,31 +56,25 @@ func getKline(strs ...string) {
 	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&type=before&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol, time.Now().UnixMilli())
 	body, _ := util.XueQiuAPI(url)
 
+	// unmarshal
 	var data struct {
 		Column []string `json:"column"`
 		Item   [][]any  `json:"item"`
 	}
 	util.UnmarshalJSON(body, &data, "data")
 
-	// decode map
-	srcMap := make([]map[string]any, len(data.Item))
-	for i, item := range data.Item {
-		srcMap[i] = map[string]any{}
-
-		for c, col := range data.Column {
-			srcMap[i][col] = item[c]
-		}
-	}
-
 	var klines []*model.Kline
-	mapstructure.Decode(srcMap, &klines)
+	// decode
+	util.DecodeJSONItems(data.Column, data.Item, &klines)
 	if klines == nil {
 		return
 	}
 
+	// set code and time
+	layout := "2006/01/02"
 	for _, k := range klines {
 		k.Code = id
-		k.Time = time.UnixMilli(k.TimeStamp)
+		k.Time, _ = time.Parse(layout, time.UnixMilli(k.TimeStamp).Format(layout))
 	}
 
 	// save
@@ -79,15 +89,9 @@ func getKline(strs ...string) {
 func getMinuteKline(strs ...string) {
 	id := strs[0]
 
-	var symbol string
-	before, after, _ := strings.Cut(id, ".")
-	switch after {
-	case "SH":
-		symbol = before + ".SS"
-	case "SZ":
-		symbol = id
-	default:
-		return
+	symbol := id
+	if strings.Contains(id, ".SH") {
+		symbol = strings.ReplaceAll(id, ".SH", ".SS")
 	}
 
 	// find cache
@@ -149,4 +153,30 @@ func getMinuteKline(strs ...string) {
 
 	bulk.Run(ctx)
 	db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*6)
+}
+
+func getWinRate(id string) {
+	var data []*struct {
+		TradeDate  string  `bson:"-" mapstructure:"trade_date"`
+		WeightAvg  float64 `bson:"weight_avg" mapstructure:"weight_avg"`
+		WinnerRate float64 `bson:"winner_rate" mapstructure:"winner_rate"`
+	}
+	err := util.TushareApi(
+		"cyq_perf", bson.M{"ts_code": id}, "trade_date,weight_avg,winner_rate", &data,
+	)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return
+	}
+
+	bulk := db.KlineDB.Collection(util.Md5Code(id)).Bulk()
+
+	// save db
+	for _, i := range data {
+		t, _ := time.Parse("20060102", i.TradeDate)
+		bulk.UpdateOne(bson.M{"code": id, "time": t}, bson.M{"$set": i})
+	}
+	bulk.Run(ctx)
+
+	db.LimitDB.Set(ctx, "winner_rate:"+id, 1, time.Hour*12)
 }

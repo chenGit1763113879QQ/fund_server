@@ -16,9 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-const (
-	pageSize = 20
-)
+const pageSize = 20
 
 var (
 	ctx     = context.Background()

@@ -58,7 +58,7 @@ func init() {
 	Stock.EnsureIndexes(ctx, nil, []string{"marketType", "type"})
 
 	Predict = FundDB.Collection("predict")
-	Predict.EnsureIndexes(ctx, nil, []string{"src_code"})
+	Predict.EnsureIndexes(ctx, []string{"src_code,match_code,period,start_date"}, nil)
 
 	Fina = FundDB.Collection("fina")
 	Fina.EnsureIndexes(ctx, nil, []string{"ts_code", "end_type"})

@@ -13,14 +13,5 @@ tidy:
 	go mod tidy
 	go clean
 
-dailyinfo:
-	python3 script/dailyinfo.py
-
-database:
-	python3 script/database.py
-
-pip:
-	pip3 install --upgrade -r requirements.txt -i https://pypi.douban.com/simple
-
 compose:
 	docker-compose up

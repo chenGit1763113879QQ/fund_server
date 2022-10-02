@@ -172,6 +172,7 @@ type Kline struct {
 	TimeStamp int64 `bson:"-"`
 
 	Code       string
+	WeightAvg  float64 `bson:"weight_avg,omitempty"`
 	WinnerRate float64 `bson:"winner_rate,omitempty"`
 
 	Open   float64
