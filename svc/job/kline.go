@@ -6,17 +6,29 @@ import (
 	"fund/model"
 	"fund/util"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+var count int32 = 195
+
+func init() {
+	// start limit count
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+			atomic.SwapInt32(&count, 195)
+		}
+	}()
+}
+
 func InitKlines() {
 	var stocks []struct {
-		MarketType util.Code `bson:"marketType"`
-		Id         string    `bson:"_id"`
-		Symbol     string
+		Id     string `bson:"_id"`
+		Symbol string
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
 
@@ -24,25 +36,9 @@ func InitKlines() {
 	// kline
 	for _, i := range stocks {
 		p.NewTask(getKline, i.Symbol, i.Id)
-
-		if i.MarketType == util.MARKET_CN {
-			p.NewTask(getMinuteKline, i.Id)
-		}
+		p.NewTask(getMinuteKline, i.Id)
 	}
 	p.Wait()
-
-	// tushare
-	for _, i := range stocks {
-		if i.MarketType == util.MARKET_CN {
-			// find cache
-			if ok, _ := db.LimitDB.Exists(ctx, "winner_rate:"+i.Id).Result(); ok > 0 {
-				continue
-			}
-			go getWinRate(i.Id)
-			time.Sleep(time.Minute / 200)
-		}
-	}
-
 	log.Info().Msgf("init kline[%d] success", len(stocks))
 }
 
@@ -83,11 +79,18 @@ func getKline(strs ...string) {
 	coll.RemoveAll(ctx, bson.M{"code": id})
 	coll.InsertMany(ctx, klines)
 
-	db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*12)
+	db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*24)
+
+	// winner_rate
+	go getWinRate(id)
 }
 
 func getMinuteKline(strs ...string) {
 	id := strs[0]
+	// is cn stock
+	if !strings.Contains(id, ".SH") && !strings.Contains(id, ".SZ") {
+		return
+	}
 
 	symbol := id
 	if strings.Contains(id, ".SH") {
@@ -152,10 +155,25 @@ func getMinuteKline(strs ...string) {
 	}
 
 	bulk.Run(ctx)
-	db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*6)
+	db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*24)
 }
 
 func getWinRate(id string) {
+	// is cn stock
+	if !strings.Contains(id, ".SH") && !strings.Contains(id, ".SZ") {
+		return
+	}
+
+	// count
+	for atomic.LoadInt32(&count) < 1 {
+	}
+	atomic.AddInt32(&count, -1)
+
+	// find cache
+	if ok, _ := db.LimitDB.Exists(ctx, "winner_rate:"+id).Result(); ok > 0 {
+		return
+	}
+
 	var data []*struct {
 		TradeDate  string  `bson:"-" mapstructure:"trade_date"`
 		WeightAvg  float64 `bson:"weight_avg" mapstructure:"weight_avg"`
@@ -178,5 +196,5 @@ func getWinRate(id string) {
 	}
 	bulk.Run(ctx)
 
-	db.LimitDB.Set(ctx, "winner_rate:"+id, 1, time.Hour*12)
+	db.LimitDB.Set(ctx, "winner_rate:"+id, 1, time.Hour*24)
 }

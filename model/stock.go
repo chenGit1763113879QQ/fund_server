@@ -183,7 +183,6 @@ type Kline struct {
 	Amount float64
 
 	MainNet float64 `bson:",omitempty"`
-	Net     float64 `bson:",omitempty"`
 
 	MACD     float64 `bson:",omitempty"`
 	MACD_DEA float64 `bson:",omitempty" mapstructure:"dea"`
@@ -212,4 +211,25 @@ type MinuteKline struct {
 	Open      []float64 `mapstructure:"open_px"`
 	Close     []float64 `mapstructure:"close_px`
 	Avg       []float64 `mapstructure:"avg_px`
+}
+
+type PredictRes struct {
+	Period    int
+	Limit     int
+	Std       float64
+	SrcCode   string    `bson:"src_code"`
+	MatchCode string    `bson:"match_code"`
+	StartDate time.Time `bson:"start_date"`
+}
+
+type PredictArr []*PredictRes
+
+func (x PredictArr) Len() int {
+	return len(x)
+}
+func (x PredictArr) Less(i, j int) bool {
+	return x[i].Std < x[j].Std
+}
+func (x PredictArr) Swap(i, j int) {
+	x[i], x[j] = x[j], x[i]
 }

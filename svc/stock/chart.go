@@ -87,11 +87,11 @@ func GetSimpleChart(code string, chartType string) any {
 
 func GetKline(c *gin.Context) {
 	var req struct {
-		Code      string `form:"code" binding:"required"`
-		Period    string `form:"period" binding:"required"`
-		StartDate string `form:"start_date"`
-		Head      int    `form:"head"`
-		Tail      int    `form:"tail"`
+		Code      string    `form:"code" binding:"required"`
+		Period    string    `form:"period" binding:"required"`
+		StartDate time.Time `form:"start_date"`
+		Head      int       `form:"head"`
+		Tail      int       `form:"tail"`
 	}
 	if err := c.ShouldBind(&req); err != nil {
 		midware.Error(c, err)
@@ -102,22 +102,19 @@ func GetKline(c *gin.Context) {
 		"d": "%Y/%m/%d", "w": "%Y/%V", "m": "%Y/%m", "y": "%Y",
 	}[req.Period]
 
-	if req.StartDate == "" {
+	if req.StartDate.IsZero() {
 		switch req.Period {
 		case "y", "q", "m":
-			req.StartDate = "2012/01/01"
 		case "w":
-			req.StartDate = "2015/06/01"
+			req.StartDate, _ = time.Parse("2006/01/02", "2015/06/01")
 		default:
-			req.StartDate = "2020/01/01"
+			req.StartDate, _ = time.Parse("2006/01/02", "2020/01/01")
 		}
 	}
 
-	t, _ := time.Parse("2006/01/02", req.StartDate)
-
 	var data []bson.M
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": t}}).
+		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": req.StartDate}}).
 		Group(bson.M{
 			"_id":         bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
 			"time":        bson.M{"$last": "$time"},

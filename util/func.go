@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -102,6 +102,7 @@ func TushareApi(api string, params any, fields any, data any) error {
 	}
 	if src.Msg != "" {
 		log.Warn().Msgf("tushare msg: %s", src.Msg)
+		return errors.New(src.Msg)
 	}
 
 	return DecodeJSONItems(src.Data.Head, src.Data.Items, &data)
@@ -124,7 +125,7 @@ func Md5Code(code string) string {
 	m := md5.New()
 	m.Write([]byte(code))
 	val := hex.EncodeToString(m.Sum(nil))
-	return fmt.Sprintf("%X%c", val[0]%8, val[1])
+	return val[0:2]
 }
 
 // Check str is Chinese
