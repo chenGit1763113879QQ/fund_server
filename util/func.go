@@ -17,9 +17,9 @@ import (
 )
 
 // In slice
-func In[T string | int](mem T, arr []T) bool {
+func In[T string | int](n T, arr []T) bool {
 	for i := range arr {
-		if mem == arr[i] {
+		if n == arr[i] {
 			return true
 		}
 	}
@@ -52,7 +52,7 @@ func GetAndRead(url string) ([]byte, error) {
 func XueQiuAPI(url string) ([]byte, error) {
 	// add token
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
-	req.Header.Add("cookie", "xq_a_token=25916c3bfec27272745f6070d664a48d4b10d322")
+	req.Header.Add("cookie", "xq_a_token=7b4d94a453e79e9b10174ad2d87da0db78921f7c")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -139,10 +139,19 @@ func IsChinese(str string) bool {
 // Mean 均值
 func Mean[T int | int64 | float64](arr []T) float64 {
 	var sum T
-	for i := range arr {
-		sum += arr[i]
+	for _, i := range arr {
+		sum += i
 	}
 	return float64(sum) / float64(len(arr))
+}
+
+// Sum 求和
+func Sum(arr ...float64) float64 {
+	var sum float64
+	for _, i := range arr {
+		sum += i
+	}
+	return sum
 }
 
 // Go Job for every duration

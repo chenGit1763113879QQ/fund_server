@@ -55,7 +55,7 @@ func init() {
 	MinuteDB = client.Database("minute")
 
 	Stock = FundDB.Collection("stock")
-	Stock.EnsureIndexes(ctx, nil, []string{"marketType", "type"})
+	Stock.EnsureIndexes(ctx, []string{"symbol"}, []string{"marketType", "type"})
 
 	Predict = FundDB.Collection("predict")
 	Predict.EnsureIndexes(ctx, []string{"src_code,match_code,period,start_date"}, nil)
@@ -67,7 +67,7 @@ func init() {
 	User.EnsureIndexes(ctx, []string{"email", "name"}, nil)
 
 	Minute = FundDB.Collection("minute")
-	Minute.EnsureIndexes(ctx, []string{"code,trade_date"}, nil)
+	Minute.EnsureIndexes(ctx, []string{"code"}, nil)
 
 	// Redis
 	LimitDB = redis.NewClient(&redis.Options{

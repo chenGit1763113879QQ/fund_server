@@ -17,12 +17,14 @@ import (
 )
 
 const pageSize = 20
+const XQHOST = "https://stock.xueqiu.com/v5/stock"
 
 var (
 	ctx     = context.Background()
-	listOpt = bson.M{"members": 0}
+	listOpt = bson.M{"members": 0, "pinyin": 0, "lazy_pinyin": 0, "symbol": 0}
 )
 
+// GetStockDetail 获取股票详情
 func GetStockDetail(code string) bson.M {
 	var data bson.M
 	db.Stock.Find(ctx, bson.M{"_id": code}).Select(listOpt).One(&data)
@@ -45,6 +47,7 @@ func GetStockDetail(code string) bson.M {
 	return data
 }
 
+// GetStockList 获取股票列表
 func GetStockList(c *gin.Context) {
 	var req struct {
 		Parent     string   `form:"parent"`
@@ -100,6 +103,7 @@ func GetStockList(c *gin.Context) {
 	midware.Success(c, data)
 }
 
+// Search 搜索股票内容
 func Search(c *gin.Context) {
 	input := c.Query("input") + ".*"
 	var data []bson.M
@@ -119,6 +123,7 @@ func Search(c *gin.Context) {
 	midware.Success(c, data)
 }
 
+// AllBKDetails 所有板块详情
 func AllBKDetails(c *gin.Context) {
 	var req struct {
 		Market util.Code `form:"market" binding:"required"`
@@ -146,6 +151,7 @@ func AllBKDetails(c *gin.Context) {
 	midware.Success(c, data)
 }
 
+// PredictKline 获取预测K线结果
 func PredictKline(c *gin.Context) {
 	data := make([]bson.M, 0)
 	period, _ := strconv.Atoi(c.Query("period"))
@@ -162,6 +168,40 @@ func PredictKline(c *gin.Context) {
 		}).
 		Unwind("$src_code").
 		Unwind("$match_code").Do()).All(&data)
+
+	midware.Success(c, data)
+}
+
+// GetPortfolio 获取雪球自选股（需输入雪球token）
+func GetPortfolio(c *gin.Context) {
+	url := XQHOST + "/portfolio/stock/list.json?category=1&size=500"
+	body, _ := util.XueQiuAPI(url)
+
+	var data []struct {
+		Symbol  string `json:"symbol"`
+		Created int    `json:"created"`
+	}
+	util.UnmarshalJSON(body, &data, "data", "stocks")
+
+	symbols := make([]string, len(data))
+	for i, s := range data {
+		symbols[i] = s.Symbol
+	}
+
+	var stocks []bson.M
+	db.Stock.Find(ctx, bson.M{"symbol": bson.M{"$in": symbols}}).
+		Select(listOpt).All(&stocks)
+
+	midware.Success(c, stocks)
+}
+
+// GetHotStock 获取雪球热股
+func GetHotStock(c *gin.Context) {
+	url := XQHOST + "/hot_stock/list.json?size=100&type=10"
+	body, _ := util.XueQiuAPI(url)
+
+	var data []bson.M
+	util.UnmarshalJSON(body, &data, "data", "items")
 
 	midware.Success(c, data)
 }

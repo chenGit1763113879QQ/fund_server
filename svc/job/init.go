@@ -36,16 +36,17 @@ func init() {
 			getCategoryIndustries(p.StrMarket)
 			getIndustry(p)
 		}
-	}, time.Hour*24, time.Second*5)
+	}, time.Hour*24, time.Second*3)
 
 	// kline & predict
 	util.GoJob(func() {
 		InitKlines()
 
-		WinRate()
-		PredictStock()
+		// WinRate()
+		// PredictStock()
 
 		cache.KlineMap.Clear()
+		cache.PreKlineMap.Clear()
 
-	}, time.Hour*24, time.Second*5)
+	}, time.Hour*24, time.Second*3)
 }

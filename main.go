@@ -6,6 +6,7 @@ import (
 	"fund/svc/stock"
 	"fund/svc/user"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -44,11 +45,8 @@ func main() {
 		GET("/list", stock.GetStockList).
 		GET("/chart/kline", stock.GetKline).
 		GET("/predict", stock.PredictKline).
-		GET("/group", stock.GetGroups).
-		POST("/group", stock.AddGroup).
-		PUT("/group", stock.ChangeGroup).
-		DELETE("/group", stock.RemGroup).
-		GET("/group/in", stock.InGroup)
+		GET("/portfolio", stock.GetPortfolio).
+		GET("/hot", stock.GetHotStock)
 
 	api.Group("back").
 		GET("/logs", stock.GetBackLogs)
@@ -57,7 +55,13 @@ func main() {
 		GET("/bk", stock.AllBKDetails)
 
 	r.NoRoute(func(c *gin.Context) {
-		midware.Error(c, errors.New("page not found"), http.StatusNotFound)
+		// api not found
+		if c.Request.URL.Path == "/api" || strings.HasPrefix(c.Request.URL.Path, "/api/") {
+			midware.Error(c, errors.New("page not found"), http.StatusNotFound)
+			return
+		}
+		// static fallback
+		c.File("public/index.html")
 	})
 
 	panic(r.Run("0.0.0.0:10888"))

@@ -6,10 +6,11 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var jwtSecret = []byte("fLA0Jx@2fs6X!WZu")
+var jwtSecret = uuid.NewString()
 
 func Authorize(c *gin.Context) {
 	token := c.GetHeader("Authorization")

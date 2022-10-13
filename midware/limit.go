@@ -16,9 +16,6 @@ var limit = rate.NewLimiter(20, 1000)
 // 流量控制
 func FlowController(c *gin.Context) {
 	ip := c.ClientIP()
-	if ip == "127.0.0.1" {
-		return
-	}
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Second*3)
 	if err := limit.Wait(c); err != nil {

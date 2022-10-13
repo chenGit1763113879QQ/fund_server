@@ -104,7 +104,7 @@ func getCNStocks() []string {
 	var id []string
 	db.Stock.Find(ctx, bson.M{
 		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK,
-		"mc": bson.M{"$gt": 50 * math.Pow(10, 8)},
+		"mc": bson.M{"$gte": 50 * math.Pow(10, 8)},
 	}).Distinct("_id", &id)
 	return id
 }

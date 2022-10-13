@@ -5,52 +5,64 @@ import (
 	"time"
 )
 
+type PreData struct {
+	Time  []time.Time
+	Close []float64
+	Open  []float64
+}
+
+func (s *PreData) Len() int {
+	return len(s.Close)
+}
+
 type PreMap struct {
-	close map[string][]float64
-	time  map[string][]time.Time
-	sync.RWMutex
+	keys []string
+	data []PreData
+	sync.Mutex
 }
 
 var PreKlineMap = &PreMap{
-	close: make(map[string][]float64),
-	time:  make(map[string][]time.Time),
+	keys: make([]string, 0),
+	data: make([]PreData, 0),
 }
 
-func (s *PreMap) Load(key string) ([]float64, []time.Time) {
-	s.RLock()
-	defer s.RUnlock()
-	return s.close[key], s.time[key]
+func (s *PreMap) Load(key string) PreData {
+	for i := range s.keys {
+		if s.keys[i] == key {
+			return s.data[i]
+		}
+	}
+	return PreData{}
 }
 
-func (s *PreMap) Store(key string, close []float64, times []time.Time) {
+func (s *PreMap) Store(key string, value PreData) {
 	s.Lock()
 	defer s.Unlock()
-	s.close[key] = close
-	s.time[key] = times
+	// find
+	for i := range s.keys {
+		if s.keys[i] == key {
+			s.data[i] = value
+			return
+		}
+	}
+	// unfind
+	s.keys = append(s.keys, key)
+	s.data = append(s.data, value)
 }
 
-func (s *PreMap) Range(f func(k string, close []float64, times []time.Time)) {
-	s.RLock()
-	defer s.RUnlock()
-	for k, v := range s.close {
-		t := s.time[k]
-		f(k, v, t)
+func (s *PreMap) Range(f func(k string, value PreData)) {
+	for i := range s.keys {
+		f(s.keys[i], s.data[i])
 	}
 }
 
 func (s *PreMap) Clear() {
-	KlineMap.Lock()
-	defer KlineMap.Unlock()
-	for k := range s.close {
-		delete(s.close, k)
-	}
-	for k := range s.time {
-		delete(s.time, k)
-	}
+	s.Lock()
+	defer s.Unlock()
+	s.keys = make([]string, 0)
+	s.data = make([]PreData, 0)
 }
 
 func (s *PreMap) Len() int {
-	KlineMap.RLock()
-	defer KlineMap.RUnlock()
-	return len(s.close)
+	return len(s.data)
 }

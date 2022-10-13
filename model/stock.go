@@ -220,6 +220,8 @@ type PredictRes struct {
 	SrcCode   string    `bson:"src_code"`
 	MatchCode string    `bson:"match_code"`
 	StartDate time.Time `bson:"start_date"`
+	PreDirect bool      `bson:"pre_direct"`  // 预测方向 true为涨
+	PrePctChg float64   `bson:"pre_pct_chg"` // 预测涨幅
 }
 
 type PredictArr []*PredictRes

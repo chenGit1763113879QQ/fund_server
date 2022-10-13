@@ -30,26 +30,25 @@ func PredictStock() {
 }
 
 func loadKlines() {
-	t, _ := time.Parse("2006/01/02", "2013/01/01")
+	t, _ := time.Parse("2006/01/02", "2017/01/01")
 
 	p := util.NewPool()
 	for _, code := range getCNStocks() {
 		p.NewTask(func(strs ...string) {
 			id := strs[0]
-			var data []*model.Kline
+			var data cache.PreData
 
 			// get kline
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
 				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
-				Do()).All(&data)
+				Group(bson.M{
+					"_id":   1,
+					"time":  bson.M{"$push": "$time"},
+					"open":  bson.M{"$push": "$open"},
+					"close": bson.M{"$push": "$close"},
+				}).Do()).One(&data)
 
-			priceArr := make([]float64, len(data))
-			timeArr := make([]time.Time, len(data))
-			for i, k := range data {
-				priceArr[i] = k.WinnerRate - 50
-				timeArr[i] = k.Time
-			}
-			cache.PreKlineMap.Store(id, priceArr, timeArr)
+			cache.PreKlineMap.Store(id, data)
 		}, code)
 	}
 	p.Wait()
@@ -68,80 +67,66 @@ func predict(strs ...string) {
 	}
 
 	// src
-	src, _ := cache.PreKlineMap.Load(code)
-	if len(src) < days {
+	df := cache.PreKlineMap.Load(code)
+	n := df.Len()
+	if n < days {
 		return
 	}
-	src = src[len(src)-days:]
-
-	// trend
-	trend := src[0] > src[days-1]
+	factor := df.Open[n-days]
+	df.Open = oneness(df.Open[n-days:], factor)
+	df.Close = oneness(df.Close[n-days:], factor)
 
 	// results
-	db.Predict.RemoveAll(ctx, bson.M{"src_code": code, "period": days})
+	db.Predict.RemoveAll(ctx, &model.PredictRes{SrcCode: code, Period: days})
 	results := make(model.PredictArr, 0)
 
-	cache.PreKlineMap.Range(func(matchCode string, match []float64, times []time.Time) {
-		if len(match) < days {
+	cache.PreKlineMap.Range(func(key string, v cache.PreData) {
+		if v.Len() < days {
 			return
 		}
 		// rolling window
-		for i := 0; i+days+PREDICT_DAYS < len(match); i++ {
-			// trend
-			if trend != (match[i] > match[i+days-1]) {
-				continue
+		for i := 0; i+days+PREDICT_DAYS < v.Len(); i++ {
+			factor := v.Open[i]
+			stdSum := util.Sum(
+				std(df.Open, oneness(v.Open[i:i+days], factor)),
+				std(df.Close, oneness(v.Close[i:i+days], factor)),
+			)
+			if stdSum < 8 {
+				i++
+				results = append(results, &model.PredictRes{
+					SrcCode:   code,
+					MatchCode: key,
+					StartDate: v.Time[i],
+					Period:    days,
+					Limit:     days + PREDICT_DAYS,
+					Std:       stdSum,
+					PreDirect: v.Close[i+days] > v.Close[i],
+					PrePctChg: (v.Close[i+days]/v.Close[i] - 1) * 100,
+				})
 			}
-			results = append(results, &model.PredictRes{
-				SrcCode:   code,
-				MatchCode: matchCode,
-				StartDate: times[i],
-				Period:    days,
-				Limit:     days + PREDICT_DAYS,
-				Std:       std(src, match[i:i+days]),
-			})
 		}
 	})
 
 	sort.Sort(results)
-	if results.Len() > 20 {
-		results = results[0:20]
+	if results.Len() > 10 {
+		results = results[0:10]
 	}
-
-	// filter closely date
-	for i := 0; i < results.Len()-2; i++ {
-		l := results[i]
-		r := results[i+1]
-
-		if l == nil || r == nil {
-			continue
-		}
-		if r.StartDate.Sub(l.StartDate) <= time.Hour*72 {
-			if l.Std > r.Std {
-				results[i] = nil
-			} else {
-				results[i+1] = nil
-			}
-		}
-	}
-	for i, p := range results {
-		if p == nil {
-			results = append(results[:i], results[i+1:]...)
-		}
-	}
-
 	// save db
 	db.Predict.InsertMany(ctx, results)
 	db.LimitDB.Set(ctx, fmt.Sprintf("predict_%d:%s", days, code), "1", time.Hour*12)
 }
 
-func oneness(arr []float64, factors ...float64) {
+func oneness(arr []float64, factors ...float64) []float64 {
 	factor := arr[0]
 	if len(factors) > 0 {
 		factor = factors[0]
 	}
-	for i := range arr {
-		arr[i] /= (factor / 100)
+
+	newArr := make([]float64, len(arr))
+	for i := range newArr {
+		newArr[i] = arr[i] / factor * 100
 	}
+	return newArr
 }
 
 func std(arr1 []float64, arr2 []float64) float64 {

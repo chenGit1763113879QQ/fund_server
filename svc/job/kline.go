@@ -32,7 +32,7 @@ func InitKlines() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
 
-	p := util.NewPool(6)
+	p := util.NewPool(8)
 	// kline
 	for _, i := range stocks {
 		p.NewTask(getKline, i.Symbol, i.Id)

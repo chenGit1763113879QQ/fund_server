@@ -15,3 +15,12 @@ tidy:
 
 compose:
 	docker-compose up
+
+# prevent exposure of the tunnel config
+sakura_frp:
+	docker run -d \
+		--restart=always \
+		--pull=always \
+		--name=sakura_frp \
+		natfrp/frpc \
+		-f xxx:xxx
