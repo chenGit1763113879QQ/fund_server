@@ -3,8 +3,8 @@ package model
 import (
 	"fmt"
 	"fund/util"
-	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/mozillazg/go-pinyin"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -168,7 +168,7 @@ type Kline struct {
 	Ps  float64 `bson:",omitempty"`
 	Pcf float64 `bson:",omitempty"`
 
-	Time      time.Time
+	Time      civil.Date
 	TimeStamp int64 `bson:"-"`
 
 	Code       string
@@ -191,9 +191,7 @@ type Kline struct {
 	BOLL_MID float64 `bson:",omitempty" mapstructure:"ma20"`
 	BOLL_UP  float64 `bson:",omitempty" mapstructure:"ub"`
 	BOLL_LOW float64 `bson:",omitempty" mapstructure:"lb"`
-
-	Mc      float64 `bson:",omitempty" mapstructure:"market_capital"`
-	Balance float64 `bson:",omitempty"`
+	Balance  float64 `bson:",omitempty"`
 
 	HoldVolCN   int64   `bson:"hold_vol_cn,omitempty" mapstructure:"hold_volume_cn"`
 	HoldRatioCN float64 `bson:"hold_ratio_cn,omitempty" mapstructure:"hold_ratio_cn"`
@@ -206,22 +204,21 @@ type Kline struct {
 
 type MinuteKline struct {
 	Code      string
-	TradeDate time.Time `bson:"trade_date"`
-	Time      []int64   `bson:"time" mapstructure:"tick_at"`
-	Open      []float64 `mapstructure:"open_px"`
-	Close     []float64 `mapstructure:"close_px`
-	Avg       []float64 `mapstructure:"avg_px`
+	TradeDate civil.Date `bson:"trade_date"`
+	Time      []int64    `bson:"time" mapstructure:"tick_at"`
+	Open      []float64  `mapstructure:"open_px"`
+	Close     []float64  `mapstructure:"close_px`
+	Avg       []float64  `mapstructure:"avg_px`
 }
 
 type PredictRes struct {
 	Period    int
 	Limit     int
 	Std       float64
-	SrcCode   string    `bson:"src_code"`
-	MatchCode string    `bson:"match_code"`
-	StartDate time.Time `bson:"start_date"`
-	PreDirect bool      `bson:"pre_direct"`  // 预测方向 true为涨
-	PrePctChg float64   `bson:"pre_pct_chg"` // 预测涨幅
+	SrcCode   string     `bson:"src_code"`
+	MatchCode string     `bson:"match_code"`
+	StartDate civil.Date `bson:"start_date"`
+	PrePctChg float64    `bson:"pre_pct_chg"`
 }
 
 type PredictArr []*PredictRes

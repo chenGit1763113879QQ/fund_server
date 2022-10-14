@@ -18,7 +18,7 @@ type Task struct {
 
 // Return New Pool
 func NewPool(size ...int) *Pool {
-	num := runtime.NumCPU() / 2
+	num := runtime.NumCPU()
 	if len(size) > 0 {
 		num = size[0]
 	}

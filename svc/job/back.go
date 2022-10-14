@@ -6,25 +6,20 @@ import (
 	"fund/model"
 
 	"github.com/rs/zerolog/log"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 const (
-	TYPE_WINRATE = "win_rate"
-
-	ARG_WINRATE = "winner_rate"
+	ALG_WINRATE = "winner_rate"
 )
 
-type BACK_FUNC func(k *model.Kline) bool
+type backFunc func(k *model.Kline) bool
 
 // run back test
-func runBackTest(backType string, arg float64, argName string, buy BACK_FUNC, sell BACK_FUNC) {
+func runBackTest(backType string, arg float64, argName string, buy backFunc, sell backFunc) {
 	// init collection
 	coll := db.BackDB.Collection(backType)
 	coll.EnsureIndexes(ctx, []string{"code,arg"}, nil)
 
-	// rm collection
-	coll.Remove(ctx, bson.M{"arg": arg, "arg_name": argName})
 	bulk := coll.Bulk()
 
 	// run
@@ -44,17 +39,12 @@ func runBackTest(backType string, arg float64, argName string, buy BACK_FUNC, se
 }
 
 func WinRate() {
-	db.BackDB.Collection(TYPE_WINRATE).DropCollection(ctx)
+	db.BackDB.Collection(ALG_WINRATE).DropCollection(ctx)
 
-	arg := 10.0
 	runBackTest(
-		TYPE_WINRATE, arg, ARG_WINRATE,
-		func(k *model.Kline) bool {
-			return k.WinnerRate < 2.7 && k.Tr < 3.5 && k.Pe < 33
-		},
-		func(k *model.Kline) bool {
-			return k.WinnerRate > 20
-		},
+		ALG_WINRATE, 10.0, ALG_WINRATE,
+		func(k *model.Kline) bool { return k.WinnerRate < 2.7 && k.Tr < 3.5 && k.Pe < 33 },
+		func(k *model.Kline) bool { return k.WinnerRate > 20 },
 	)
-	log.Debug().Msgf("%s backtest finished", TYPE_WINRATE)
+	log.Debug().Msgf("%s backtest finished", ALG_WINRATE)
 }

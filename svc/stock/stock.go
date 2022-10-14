@@ -113,8 +113,6 @@ func Search(c *gin.Context) {
 			// regex pattern
 			bson.M{"_id": bson.M{"$regex": input, "$options": "i"}},
 			bson.M{"name": bson.M{"$regex": input, "$options": "i"}},
-
-			// allow pinyin
 			bson.M{"lazy_pinyin": bson.M{"$regex": input, "$options": "i"}},
 			bson.M{"pinyin": bson.M{"$regex": input, "$options": "i"}},
 		},

@@ -14,6 +14,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/viper"
 )
 
 // In slice
@@ -48,11 +49,10 @@ func GetAndRead(url string) ([]byte, error) {
 	return body, nil
 }
 
-// Get XueQiu api
+// XueQiu api
 func XueQiuAPI(url string) ([]byte, error) {
-	// add token
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
-	req.Header.Add("cookie", "xq_a_token=7b4d94a453e79e9b10174ad2d87da0db78921f7c")
+	req.Header.Add("cookie", viper.GetString("xq_token"))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -65,12 +65,12 @@ func XueQiuAPI(url string) ([]byte, error) {
 	return body, nil
 }
 
-// tushare api
+// TuShare api
 func TushareApi(api string, params any, fields any, data any) error {
 	// set params
 	req := map[string]any{
 		"api_name": api,
-		"token":    "8dbaa93be7f8d09210ca9cb0843054417e2820203201c0f3f7643410",
+		"token":    viper.GetString("ts_token"),
 	}
 	if params != nil {
 		req["params"] = params

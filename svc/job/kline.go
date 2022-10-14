@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -49,7 +50,7 @@ func getKline(strs ...string) {
 		return
 	}
 
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&type=before&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,market_capital,agt,ggt,macd,boll,balance", symbol, time.Now().UnixMilli())
+	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&type=before&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,agt,ggt,macd,boll,balance", symbol, time.Now().UnixMilli())
 	body, _ := util.XueQiuAPI(url)
 
 	// unmarshal
@@ -67,10 +68,9 @@ func getKline(strs ...string) {
 	}
 
 	// set code and time
-	layout := "2006/01/02"
 	for _, k := range klines {
 		k.Code = id
-		k.Time, _ = time.Parse(layout, time.UnixMilli(k.TimeStamp).Format(layout))
+		k.Time = civil.DateOf(time.UnixMilli(k.TimeStamp))
 	}
 
 	// save
@@ -129,9 +129,9 @@ func getMinuteKline(strs ...string) {
 	}
 
 	for _, item := range data.Item {
-		t := time.Unix(int64(item[2]), 0)
+		t := civil.DateOf(time.Unix(int64(item[2]), 0))
 
-		if !kline.TradeDate.IsZero() && t.Day() > kline.TradeDate.Day() {
+		if !kline.TradeDate.IsZero() && t.DaysSince(kline.TradeDate) > 0 {
 			// 归一化
 			factor := kline.Open[0]
 			oneness(kline.Close, factor)
@@ -163,7 +163,6 @@ func getWinRate(id string) {
 	if !strings.Contains(id, ".SH") && !strings.Contains(id, ".SZ") {
 		return
 	}
-
 	// count
 	for atomic.LoadInt32(&count) < 1 {
 	}
@@ -180,7 +179,9 @@ func getWinRate(id string) {
 		WinnerRate float64 `bson:"winner_rate" mapstructure:"winner_rate"`
 	}
 	err := util.TushareApi(
-		"cyq_perf", bson.M{"ts_code": id}, "trade_date,weight_avg,winner_rate", &data,
+		"cyq_perf",
+		bson.M{"ts_code": id},
+		"trade_date,weight_avg,winner_rate", &data,
 	)
 	if err != nil {
 		log.Error().Msg(err.Error())

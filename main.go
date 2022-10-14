@@ -9,13 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/rs/zerolog"
 )
-
-func init() {
-	zerolog.TimeFieldFormat = "06/01/02 15:04:05"
-	zerolog.MessageFieldName = "msg"
-}
 
 func main() {
 	gin.SetMode(gin.ReleaseMode)

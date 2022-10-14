@@ -2,7 +2,8 @@ package model
 
 import (
 	"fund/util"
-	"time"
+
+	"cloud.google.com/go/civil"
 )
 
 type Side uint8
@@ -24,15 +25,15 @@ type Trade struct {
 
 type Tick struct {
 	Price float64
-	Time  time.Time
+	Time  civil.Date
 	Type  Side
 }
 
 type Profit struct {
-	PctChg    float64       `bson:"pct_chg"`
-	StartTime time.Time     `bson:"start_time"`
-	EndTime   time.Time     `bson:"end_time"`
-	Duration  time.Duration `bson:"duration"`
+	PctChg    float64    `bson:"pct_chg"`
+	StartTime civil.Date `bson:"start_time"`
+	EndTime   civil.Date `bson:"end_time"`
+	Duration  int        `bson:"duration"`
 }
 
 func NewTrade(code string, arg float64, argName string) *Trade {
@@ -73,7 +74,7 @@ func (t *Trade) Sell(k *Kline) {
 		PctChg:    (k.Close/avgPrice - 1) * 100,
 		StartTime: t.ticks[0].Time,
 		EndTime:   k.Time,
-		Duration:  k.Time.Sub(t.ticks[0].Time),
+		Duration:  k.Time.DaysSince(t.ticks[0].Time),
 	})
 
 	// tick logs

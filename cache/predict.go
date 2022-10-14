@@ -2,11 +2,12 @@ package cache
 
 import (
 	"sync"
-	"time"
+
+	"cloud.google.com/go/civil"
 )
 
 type PreData struct {
-	Time  []time.Time
+	Time  []civil.Date
 	Close []float64
 	Open  []float64
 }

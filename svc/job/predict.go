@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"gonum.org/v1/gonum/stat"
@@ -30,7 +31,7 @@ func PredictStock() {
 }
 
 func loadKlines() {
-	t, _ := time.Parse("2006/01/02", "2017/01/01")
+	t := civil.Date{Year: 2017, Month: 1, Day: 1}
 
 	p := util.NewPool()
 	for _, code := range getCNStocks() {
@@ -80,7 +81,7 @@ func predict(strs ...string) {
 	db.Predict.RemoveAll(ctx, &model.PredictRes{SrcCode: code, Period: days})
 	results := make(model.PredictArr, 0)
 
-	cache.PreKlineMap.Range(func(key string, v cache.PreData) {
+	cache.PreKlineMap.Range(func(k string, v cache.PreData) {
 		if v.Len() < days {
 			return
 		}
@@ -95,12 +96,11 @@ func predict(strs ...string) {
 				i++
 				results = append(results, &model.PredictRes{
 					SrcCode:   code,
-					MatchCode: key,
+					MatchCode: k,
 					StartDate: v.Time[i],
 					Period:    days,
 					Limit:     days + PREDICT_DAYS,
 					Std:       stdSum,
-					PreDirect: v.Close[i+days] > v.Close[i],
 					PrePctChg: (v.Close[i+days]/v.Close[i] - 1) * 100,
 				})
 			}
@@ -121,7 +121,6 @@ func oneness(arr []float64, factors ...float64) []float64 {
 	if len(factors) > 0 {
 		factor = factors[0]
 	}
-
 	newArr := make([]float64, len(arr))
 	for i := range newArr {
 		newArr[i] = arr[i] / factor * 100

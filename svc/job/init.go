@@ -42,7 +42,7 @@ func init() {
 	util.GoJob(func() {
 		InitKlines()
 
-		// WinRate()
+		WinRate()
 		// PredictStock()
 
 		cache.KlineMap.Clear()
