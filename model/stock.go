@@ -211,6 +211,19 @@ type MinuteKline struct {
 	Avg       []float64  `mapstructure:"avg_px`
 }
 
+type PreKline struct {
+	Time  []civil.Date
+	Close []float64
+	Open  []float64
+}
+
+func (s *PreKline) Len() int {
+	if s.Time == nil {
+		return -1
+	}
+	return len(s.Time)
+}
+
 type PredictRes struct {
 	Period    int
 	Limit     int

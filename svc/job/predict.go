@@ -31,30 +31,24 @@ func PredictStock() {
 }
 
 func loadKlines() {
-	t := civil.Date{Year: 2017, Month: 1, Day: 1}
+	t := civil.Date{Year: 2015, Month: 1, Day: 1}
 
 	p := util.NewPool()
 	for _, code := range getCNStocks() {
 		p.NewTask(func(strs ...string) {
 			id := strs[0]
-			var data cache.PreData
+			var data []*model.Kline
 
 			// get kline
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
-				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
-				Group(bson.M{
-					"_id":   1,
-					"time":  bson.M{"$push": "$time"},
-					"open":  bson.M{"$push": "$open"},
-					"close": bson.M{"$push": "$close"},
-				}).Do()).One(&data)
+				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).Do()).One(&data)
 
-			cache.PreKlineMap.Store(id, data)
+			cache.Kline.Store(id, data)
 		}, code)
 	}
 	p.Wait()
 
-	log.Info().Msgf("init predict kline[%d] success", cache.PreKlineMap.Len())
+	log.Info().Msgf("init predict kline[%d] success", cache.Kline.Len())
 }
 
 func predict(strs ...string) {
@@ -68,7 +62,7 @@ func predict(strs ...string) {
 	}
 
 	// src
-	df := cache.PreKlineMap.Load(code)
+	df := cache.Kline.LoadPKline(code)
 	n := df.Len()
 	if n < days {
 		return
@@ -81,7 +75,7 @@ func predict(strs ...string) {
 	db.Predict.RemoveAll(ctx, &model.PredictRes{SrcCode: code, Period: days})
 	results := make(model.PredictArr, 0)
 
-	cache.PreKlineMap.Range(func(k string, v cache.PreData) {
+	cache.Kline.RangePKline(func(k string, v *model.PreKline) {
 		if v.Len() < days {
 			return
 		}

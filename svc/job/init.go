@@ -2,7 +2,6 @@ package job
 
 import (
 	"context"
-	"fund/cache"
 	"fund/model"
 	"fund/util"
 	"sync"
@@ -41,12 +40,9 @@ func init() {
 	// kline & predict
 	util.GoJob(func() {
 		InitKlines()
+		loadKlines()
 
 		WinRate()
-		// PredictStock()
-
-		cache.KlineMap.Clear()
-		cache.PreKlineMap.Clear()
-
+		PredictStock()
 	}, time.Hour*24, time.Second*3)
 }

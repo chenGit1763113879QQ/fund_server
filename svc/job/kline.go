@@ -163,6 +163,7 @@ func getWinRate(id string) {
 	if !strings.Contains(id, ".SH") && !strings.Contains(id, ".SZ") {
 		return
 	}
+
 	// count
 	for atomic.LoadInt32(&count) < 1 {
 	}
@@ -180,8 +181,7 @@ func getWinRate(id string) {
 	}
 	err := util.TushareApi(
 		"cyq_perf",
-		bson.M{"ts_code": id},
-		"trade_date,weight_avg,winner_rate", &data,
+		bson.M{"ts_code": id}, "trade_date,weight_avg,winner_rate", &data,
 	)
 	if err != nil {
 		log.Error().Msg(err.Error())

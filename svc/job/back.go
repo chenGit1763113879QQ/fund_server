@@ -23,7 +23,7 @@ func runBackTest(backType string, arg float64, argName string, buy backFunc, sel
 	bulk := coll.Bulk()
 
 	// run
-	cache.KlineMap.Range(func(id string, klines []*model.Kline) {
+	cache.Kline.RangeKline(func(id string, klines []*model.Kline) {
 		trade := model.NewTrade(id, arg, argName)
 		for _, k := range klines {
 			if buy(k) {
