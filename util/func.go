@@ -175,35 +175,27 @@ func UnmarshalJSON(body []byte, data any, path ...any) error {
 	return sonic.UnmarshalString(node.ToString(), &data)
 }
 
-// ParseCode exp: 000001.SH 00700.HK AAPL.US
+// ParseCode exp: 000001.SH 00700 AAPL
 func ParseCode(code string) string {
 	pre, suf, ok := strings.Cut(code, ".")
-	if ok {
-		// .DJI
-		if pre == "" && suf != "" {
-			return suf + ".US"
-		}
-		switch suf {
+	if ok && suf == "SS" {
 		// 600519.SS
-		case "SS":
-			return pre + ".SH"
-		// normal
-		case "SH", "SZ", "HK", "US":
-			return code
-		}
-	}
-	// US
-	if len(pre) == 1 && unicode.IsLetter(rune(pre[0])) {
-		return pre + ".US"
+		return pre + ".SH"
 	}
 	// CN
-	if pre[0:2] == "SZ" || pre[0:2] == "SH" {
+	if len(pre) > 2 && (pre[0:2] == "SZ" || pre[0:2] == "SH") {
 		return fmt.Sprintf("%s.%s", pre[2:], pre[0:2])
 	}
-	// HK
-	if (pre[0] == '0' && len(pre) == 5) || pre[0:2] == "HK" {
-		return pre + ".HK"
+	return code
+}
+
+// Is CN Stock
+func IsCNStock(code string) bool {
+	_, suf, ok := strings.Cut(code, ".")
+	if ok {
+		if suf == "SH" || suf == "SZ" {
+			return true
+		}
 	}
-	// US
-	return pre + ".US"
+	return false
 }

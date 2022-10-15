@@ -11,14 +11,12 @@ type KlineCache struct {
 	pkline []*model.PreKline
 }
 
-var Kline *KlineCache
+var Kline = new(KlineCache)
 
-func New(size int) *KlineCache {
-	return &KlineCache{
-		keys:   make([]string, size),
-		kline:  make([][]*model.Kline, size),
-		pkline: make([]*model.PreKline, size),
-	}
+func (s *KlineCache) New(keys []string) {
+	s.keys = keys
+	s.kline = make([][]*model.Kline, len(keys))
+	s.pkline = make([]*model.PreKline, len(keys))
 }
 
 func (s *KlineCache) LoadPKline(key string) *model.PreKline {
@@ -43,7 +41,6 @@ func (s *KlineCache) Store(key string, value []*model.Kline) {
 		pkline.Open[i] = v.Open
 		pkline.Close[i] = v.Close
 	}
-
 	for i, k := range s.keys {
 		if key == k {
 			s.kline[i] = value

@@ -29,6 +29,7 @@ func PredictStock() {
 
 func loadKline() {
 	t, _ := time.Parse("2006/01/02", "2015/01/01")
+	cache.Kline.New(getCNStocks())
 
 	p := util.NewPool()
 	for _, code := range getCNStocks() {
@@ -38,7 +39,8 @@ func loadKline() {
 
 			// get kline
 			db.KlineDB.Collection(util.Md5Code(id)).Aggregate(ctx, mongox.Pipeline().
-				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).Do()).One(&data)
+				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
+				Do()).All(&data)
 
 			cache.Kline.Store(id, data)
 		}, code)
@@ -60,51 +62,65 @@ func predict(strs ...string) {
 
 	// src
 	df := cache.Kline.LoadPKline(code)
-	n := df.Len()
+	n := len(df.Close)
 	if n < days {
 		return
 	}
+
 	factor := df.Open[n-days]
 	df.Open = oneness(df.Open[n-days:], factor)
 	df.Close = oneness(df.Close[n-days:], factor)
+
+	// trend
+	trend := df.Close[0] > df.Close[len(df.Close)-1]
 
 	// results
 	db.Predict.RemoveAll(ctx, &model.PredictRes{SrcCode: code, Period: days})
 	results := make(model.PredictArr, 0)
 
 	cache.Kline.RangePKline(func(k string, v *model.PreKline) {
-		if v.Len() < days {
+		n := len(v.Close)
+		if n < days {
 			return
 		}
+		res := &model.PredictRes{
+			SrcCode:   code,
+			MatchCode: k,
+			Period:    days,
+			Limit:     days + PREDICT_DAYS,
+			Std:       999,
+		}
+
 		// rolling window
-		for i := 0; i+days+PREDICT_DAYS < v.Len(); i++ {
-			factor := v.Open[i]
-			stdSum := util.Sum(
-				std(df.Open, oneness(v.Open[i:i+days], factor)),
-				std(df.Close, oneness(v.Close[i:i+days], factor)),
-			)
-			if stdSum < 8 {
-				i++
-				results = append(results, &model.PredictRes{
-					SrcCode:   code,
-					MatchCode: k,
-					StartDate: v.Time[i],
-					Period:    days,
-					Limit:     days + PREDICT_DAYS,
-					Std:       stdSum,
-					PrePctChg: (v.Close[i+days]/v.Close[i] - 1) * 100,
-				})
+		for lp := 0; lp < n-PREDICT_DAYS-days; lp++ {
+			rp := lp + days
+
+			// trend
+			if (v.Close[lp] > v.Close[rp]) != trend {
+				continue
+			}
+
+			// std
+			factor := v.Open[lp]
+			stdSum := std(df.Open, oneness(v.Open[lp:rp], factor)) +
+				std(df.Close, oneness(v.Close[lp:rp], factor))
+
+			if stdSum < res.Std {
+				res.StartDate = v.Time[lp]
+				res.Std = stdSum
+				res.PrePctChg = (v.Close[rp]/v.Close[lp] - 1) * 100
 			}
 		}
+		results = append(results, res)
 	})
 
 	sort.Sort(results)
-	if results.Len() > 10 {
-		results = results[0:10]
+	if results.Len() > 20 {
+		results = results[0:20]
 	}
 	// save db
 	db.Predict.InsertMany(ctx, results)
-	db.LimitDB.Set(ctx, fmt.Sprintf("predict_%d:%s", days, code), "1", time.Hour*12)
+	db.LimitDB.Set(ctx, fmt.Sprintf("predict_%d:%s", days, code), 1, time.Hour*12)
 }
 
 func oneness(arr []float64, factors ...float64) []float64 {
@@ -120,6 +136,10 @@ func oneness(arr []float64, factors ...float64) []float64 {
 }
 
 func std(arr1 []float64, arr2 []float64) float64 {
+	if len(arr1) != len(arr2) {
+		panic("unequal length")
+	}
+
 	arr := make([]float64, len(arr1))
 	for i := range arr {
 		arr[i] = arr1[i] - arr2[i]

@@ -168,13 +168,6 @@ type PreKline struct {
 	Open  []float64
 }
 
-func (s *PreKline) Len() int {
-	if s.Time == nil {
-		return -1
-	}
-	return len(s.Time)
-}
-
 type PredictRes struct {
 	Period    int
 	Limit     int

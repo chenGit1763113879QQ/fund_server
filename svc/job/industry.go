@@ -31,9 +31,7 @@ func getCategoryIndustries(m *model.Market) {
 	}
 	util.UnmarshalJSON(body, &stock, "data", "list")
 	for _, s := range stock {
-		if len(s.Code) >= 2 {
-			s.Code = fmt.Sprintf("%s.%s", s.Code[2:], s.Code[0:2])
-		}
+		s.Code = util.ParseCode(s.Code)
 	}
 
 	// save

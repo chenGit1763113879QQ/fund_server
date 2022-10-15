@@ -87,8 +87,7 @@ func getKline(strs ...string) {
 
 func getMinuteKline(strs ...string) {
 	id := strs[0]
-	// is cn stock
-	if !strings.Contains(id, ".SH") && !strings.Contains(id, ".SZ") {
+	if !util.IsCNStock(id) {
 		return
 	}
 
@@ -102,7 +101,7 @@ func getMinuteKline(strs ...string) {
 		return
 	}
 
-	url := fmt.Sprintf("https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&prod_code=%s&fields=tick_at,close_px", symbol)
+	url := "https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&fields=tick_at,close_px&prod_code=" + symbol
 	body, _ := util.GetAndRead(url)
 
 	var data [][]float64
@@ -118,7 +117,7 @@ func getMinuteKline(strs ...string) {
 	for _, item := range data {
 		t = time.Unix(int64(item[1]), 0)
 
-		if len(price) > 0 && !tradeDate.IsZero() && t.Day() > tradeDate.Day() {
+		if !tradeDate.IsZero() && t.Day() > tradeDate.Day() {
 			bulk.InsertOne(bson.M{
 				"code":       id,
 				"price":      oneness(price),
@@ -136,8 +135,7 @@ func getMinuteKline(strs ...string) {
 }
 
 func getWinRate(id string) {
-	// is cn stock
-	if !strings.Contains(id, ".SH") && !strings.Contains(id, ".SZ") {
+	if !util.IsCNStock(id) {
 		return
 	}
 
