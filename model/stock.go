@@ -9,12 +9,6 @@ import (
 
 var PinyinArg = pinyin.NewArgs()
 
-func init() {
-	PinyinArg.Fallback = func(r rune, a pinyin.Args) []string {
-		return []string{string(r)}
-	}
-}
-
 type Index struct {
 	Market struct {
 		Region     string `json:"region"`
@@ -27,8 +21,8 @@ type Index struct {
 }
 
 type Basic struct {
-	MarketType util.Code `bson:"marketType"` // 市场
-	Type       util.Code `bson:"type"`       // 类型
+	MarketType util.Code `bson:"marketType,omitempty"` // 市场
+	Type       util.Code `bson:"type,omitempty"`       // 类型
 
 	Id         string `bson:"_id"`                   // 代码
 	Pinyin     string `bson:"pinyin,omitempty"`      // 拼音
@@ -37,6 +31,7 @@ type Basic struct {
 
 func (s *Basic) AddPinYin(name string) {
 	if util.IsChinese(name) {
+		s.Pinyin = ""
 		for _, c := range pinyin.LazyPinyin(name, PinyinArg) {
 			s.Pinyin += c
 			s.LazyPinyin += string(c[0])
@@ -95,9 +90,8 @@ type Industry struct {
 	Followers int64
 	Count     int64
 
-	Id     string `bson:"_id"` // 代码
 	Symbol string `json:"encode"`
-	Name   string `json:"name,omitempty"`
+	Name   string `json:"name" bson:",omitempty"`
 
 	PctChg  float64 `bson:"pct_chg"`
 	Pb      float64

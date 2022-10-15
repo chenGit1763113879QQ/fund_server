@@ -14,14 +14,14 @@ import (
 )
 
 func getCategoryIndustries(m *model.Market) {
-	// industries
+	// industry
 	url := fmt.Sprintf("https://xueqiu.com/service/screener/industries?category=%s", m.StrMarket)
 	body, _ := util.GetAndRead(url)
 
 	var idsData []*model.Industry
 	util.UnmarshalJSON(body, &idsData, "data", "industries")
 
-	// stocks
+	// stock
 	url = fmt.Sprintf("https://xueqiu.com/service/screener/screen?category=%s&areacode=&indcode=&size=6000&only_count=0", m.StrMarket)
 	body, _ = util.GetAndRead(url)
 
@@ -31,23 +31,23 @@ func getCategoryIndustries(m *model.Market) {
 	}
 	util.UnmarshalJSON(body, &stock, "data", "list")
 	for _, s := range stock {
-		s.Code = util.ParseCode(s.Code)
+		if len(s.Code) >= 2 {
+			s.Code = fmt.Sprintf("%s.%s", s.Code[2:], s.Code[0:2])
+		}
 	}
 
 	// save
 	bulk := db.Stock.Bulk()
 
 	for _, ids := range idsData {
-		// set industry
-		ids.Type = util.TYPE_IDS
+		// set basic
 		ids.Id = ids.Symbol
 		ids.MarketType = m.Market
-
+		ids.Type = util.TYPE_IDS
 		ids.AddPinYin(ids.Name)
 
 		// save
-		db.Stock.InsertOne(ctx, ids)
-		bulk.UpdateId(ids.Id, bson.M{"$set": ids})
+		bulk.UpsertId(ids.Id, ids)
 
 		// members
 		for _, stk := range stock {
@@ -70,7 +70,7 @@ func getIndustry(m *model.Market) {
 		Match(bson.M{"marketType": m.Market, "type": util.TYPE_IDS}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
-			"_id":       "$_id",
+			"symbol":    1,
 			"followers": bson.M{"$sum": "$c.followers"},
 			"pct_chg":   bson.M{"$avg": "$c.pct_chg"},
 			"main_net":  bson.M{"$sum": "$c.main_net"},
@@ -96,6 +96,7 @@ func getIndustry(m *model.Market) {
 	minBulk := db.MinuteDB.Collection(date).Bulk()
 
 	for _, i := range data {
+		i.Id = i.Symbol
 		bulk.UpdateId(i.Id, bson.M{"$set": i})
 
 		// minute data
