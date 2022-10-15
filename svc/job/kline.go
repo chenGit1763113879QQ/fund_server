@@ -9,7 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"cloud.google.com/go/civil"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -26,7 +25,7 @@ func init() {
 	}()
 }
 
-func InitKlines() {
+func initKline() {
 	var stocks []struct {
 		Id     string `bson:"_id"`
 		Symbol string
@@ -68,9 +67,10 @@ func getKline(strs ...string) {
 	}
 
 	// set code and time
+	layout := "2006/01/02"
 	for _, k := range klines {
 		k.Code = id
-		k.Time = civil.DateOf(time.UnixMilli(k.TimeStamp))
+		k.Time, _ = time.Parse(layout, time.UnixMilli(k.TimeStamp).Format(layout))
 	}
 
 	// save
@@ -102,56 +102,33 @@ func getMinuteKline(strs ...string) {
 		return
 	}
 
-	url := fmt.Sprintf("https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&prod_code=%s&fields=tick_at,open_px,close_px,avg_px", symbol)
+	url := fmt.Sprintf("https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&prod_code=%s&fields=tick_at,close_px", symbol)
 	body, _ := util.GetAndRead(url)
 
-	var data struct {
-		Column []string
-		Item   [][]float64
-	}
-
-	// unmarshal
-	if err := util.UnmarshalJSON(body, &data.Column, "data", "fields"); err != nil {
-		log.Error().Msg(err.Error())
-	}
-	util.UnmarshalJSON(body, &data.Item, "data", "candle", id, "lines")
+	var data [][]float64
+	util.UnmarshalJSON(body, &data, "data", "candle", id, "lines")
 
 	// coll
 	db.Minute.RemoveAll(ctx, bson.M{"code": id})
 	bulk := db.Minute.Bulk()
 
-	kline := &model.MinuteKline{
-		Code:  id,
-		Time:  make([]int64, 0),
-		Open:  make([]float64, 0),
-		Close: make([]float64, 0),
-		Avg:   make([]float64, 0),
-	}
+	price := make([]float64, 0)
+	var t, tradeDate time.Time
 
-	for _, item := range data.Item {
-		t := civil.DateOf(time.Unix(int64(item[2]), 0))
+	for _, item := range data {
+		t = time.Unix(int64(item[1]), 0)
 
-		if !kline.TradeDate.IsZero() && t.DaysSince(kline.TradeDate) > 0 {
-			// 归一化
-			factor := kline.Open[0]
-			oneness(kline.Close, factor)
-			oneness(kline.Open, factor)
-			oneness(kline.Avg, factor)
-			bulk.InsertOne(kline)
-
-			kline = &model.MinuteKline{
-				Code:  id,
-				Time:  make([]int64, 0),
-				Open:  make([]float64, 0),
-				Close: make([]float64, 0),
-				Avg:   make([]float64, 0),
-			}
+		if len(price) > 0 && !tradeDate.IsZero() && t.Day() > tradeDate.Day() {
+			bulk.InsertOne(bson.M{
+				"code":       id,
+				"price":      oneness(price),
+				"trade_date": t.Format("2006/01/02"),
+			})
+			price = make([]float64, 0)
 		}
-		kline.TradeDate = t
-		kline.Open = append(kline.Open, item[0])
-		kline.Close = append(kline.Close, item[1])
-		kline.Time = append(kline.Time, int64(item[2]))
-		kline.Avg = append(kline.Avg, item[3])
+
+		tradeDate = t
+		price = append(price, item[0])
 	}
 
 	bulk.Run(ctx)

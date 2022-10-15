@@ -98,18 +98,6 @@ func Register(c *gin.Context) {
 		midware.Error(c, errors.New("该邮箱已注册"))
 		return
 	}
-
-	// 初始化自选表
-	db.User.UpdateId(ctx, res.InsertedID.(pr.ObjectID), bson.M{
-		"$set": bson.M{
-			"groups": []model.Group{
-				{Name: "_index", List: []string{"000001.SH", "000300.SH", "399001.SZ", "399006.SZ", "000016.SH", "000905.SH"}, IsSys: true},
-				{Name: "最近浏览", List: []string{}, IsSys: true},
-				{Name: "分组1号", List: []string{"600519.SH", "000001.SH", "00700.HK", "AAPL.US"}},
-				{Name: "分组2号", List: []string{"600036.SH", "000001.SH", "000001.SZ", "BILI.US"}},
-			},
-		},
-	})
 	token, err := generateToken(res.InsertedID.(pr.ObjectID).Hex())
 
 	midware.Auto(c, err, token)

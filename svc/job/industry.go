@@ -9,29 +9,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mozillazg/go-pinyin"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func getCategoryIndustries(market string) {
+func getCategoryIndustries(m *model.Market) {
 	// industries
-	url := fmt.Sprintf("https://xueqiu.com/service/screener/industries?category=%s", market)
+	url := fmt.Sprintf("https://xueqiu.com/service/screener/industries?category=%s", m.StrMarket)
 	body, _ := util.GetAndRead(url)
 
-	var industries []*struct {
-		MarketType util.Code `bson:"marketType"`
-		Type       util.Code `bson:"type"`
-		Code       string    `json:"encode" bson:"_id"`
-		Symbol     string
-		Name       string `json:"name"`
-		Pinyin     string `bson:"pinyin"`
-		LazyPinyin string `bson:"lazy_pinyin"`
-	}
-	util.UnmarshalJSON(body, &industries, "data", "industries")
+	var idsData []*model.Industry
+	util.UnmarshalJSON(body, &idsData, "data", "industries")
 
 	// stocks
-	url = fmt.Sprintf("https://xueqiu.com/service/screener/screen?category=%s&areacode=&indcode=&size=6000&only_count=0", market)
+	url = fmt.Sprintf("https://xueqiu.com/service/screener/screen?category=%s&areacode=&indcode=&size=6000&only_count=0", m.StrMarket)
 	body, _ = util.GetAndRead(url)
 
 	var stock []*struct {
@@ -39,60 +30,37 @@ func getCategoryIndustries(market string) {
 		IndCode string `json:"indcode"`
 	}
 	util.UnmarshalJSON(body, &stock, "data", "list")
+	for _, s := range stock {
+		s.Code = util.ParseCode(s.Code)
+	}
 
 	// save
 	bulk := db.Stock.Bulk()
 
-	for _, ids := range industries {
+	for _, ids := range idsData {
 		// set industry
 		ids.Type = util.TYPE_IDS
-		ids.Symbol = ids.Code
-		switch market {
-		case "CN":
-			ids.MarketType = util.MARKET_CN
+		ids.Id = ids.Symbol
+		ids.MarketType = m.Market
 
-		case "HK":
-			ids.MarketType = util.MARKET_HK
-
-		case "US":
-			ids.MarketType = util.MARKET_US
-		}
-
-		// add pinyin
-		if util.IsChinese(ids.Name) {
-			for _, c := range pinyin.LazyPinyin(ids.Name, model.PinyinArg) {
-				ids.Pinyin += c
-				ids.LazyPinyin += string(c[0])
-			}
-		}
+		ids.AddPinYin(ids.Name)
 
 		// save
 		db.Stock.InsertOne(ctx, ids)
-		bulk.UpdateId(ids.Code, bson.M{"$set": ids})
+		bulk.UpdateId(ids.Id, bson.M{"$set": ids})
 
 		// members
 		for _, stk := range stock {
-			if ids.Code == stk.IndCode {
-				switch market {
-				case "CN":
-					stk.Code = fmt.Sprintf("%s.%s", stk.Code[2:], stk.Code[0:2])
-
-				case "HK":
-					stk.Code += ".HK"
-
-				case "US":
-					stk.Code += ".US"
-				}
-
+			if ids.Id == stk.IndCode {
 				// members
-				bulk.UpdateId(ids.Code, bson.M{"$addToSet": bson.M{"members": stk.Code}})
+				bulk.UpdateId(ids.Id, bson.M{"$addToSet": bson.M{"members": stk.Code}})
 				// bk
-				bulk.UpdateId(stk.Code, bson.M{"$addToSet": bson.M{"bk": ids.Code}})
+				bulk.UpdateId(stk.Code, bson.M{"$addToSet": bson.M{"bk": ids.Id}})
 			}
 		}
 	}
 	bulk.Run(ctx)
-	log.Info().Msgf("init industry[%s] success", market)
+	log.Info().Msgf("init industry[%s] success", m.StrMarket)
 }
 
 func getIndustry(m *model.Market) {
@@ -102,6 +70,7 @@ func getIndustry(m *model.Market) {
 		Match(bson.M{"marketType": m.Market, "type": util.TYPE_IDS}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
+			"_id":       "$_id",
 			"followers": bson.M{"$sum": "$c.followers"},
 			"pct_chg":   bson.M{"$avg": "$c.pct_chg"},
 			"main_net":  bson.M{"$sum": "$c.main_net"},

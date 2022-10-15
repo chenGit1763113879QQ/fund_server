@@ -3,8 +3,8 @@ package stock
 import (
 	"fund/db"
 	"fund/midware"
+	"time"
 
-	"cloud.google.com/go/civil"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -18,7 +18,8 @@ func GetBackLogs(c *gin.Context) {
 		midware.Error(c, err)
 	}
 
-	filter := bson.M{"logs.time": bson.M{"$gt": civil.Date{Year: 2017, Month: 9, Day: 1}}}
+	t, _ := time.Parse("2006/01/02", "2018/01/01")
+	filter := bson.M{"logs.time": bson.M{"$gt": t}}
 	if req.Code != "" {
 		filter["code"] = req.Code
 	}

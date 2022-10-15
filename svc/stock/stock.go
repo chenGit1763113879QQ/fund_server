@@ -170,7 +170,7 @@ func PredictKline(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// GetPortfolio 获取雪球自选股（需输入雪球token）
+// GetPortfolio 获取雪球自选股
 func GetPortfolio(c *gin.Context) {
 	url := XQHOST + "/portfolio/stock/list.json?category=1&size=500"
 	body, _ := util.XueQiuAPI(url)

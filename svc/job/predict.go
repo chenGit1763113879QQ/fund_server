@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"cloud.google.com/go/civil"
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 	"gonum.org/v1/gonum/stat"
@@ -20,8 +19,6 @@ import (
 const PREDICT_DAYS = 20 // 展示的预测天数
 
 func PredictStock() {
-	loadKlines()
-
 	p := util.NewPool()
 	for _, k := range getCNStocks() {
 		p.NewTask(predict, k, "60")
@@ -30,8 +27,8 @@ func PredictStock() {
 	log.Debug().Msg("predict kline finished")
 }
 
-func loadKlines() {
-	t := civil.Date{Year: 2015, Month: 1, Day: 1}
+func loadKline() {
+	t, _ := time.Parse("2006/01/02", "2015/01/01")
 
 	p := util.NewPool()
 	for _, code := range getCNStocks() {

@@ -3,7 +3,6 @@ module fund
 go 1.18
 
 require (
-	cloud.google.com/go v0.104.0
 	github.com/bytedance/sonic v1.5.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.8.1

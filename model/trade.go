@@ -2,15 +2,7 @@ package model
 
 import (
 	"fund/util"
-
-	"cloud.google.com/go/civil"
-)
-
-type Side uint8
-
-const (
-	SIDE_BUY Side = iota
-	SIDE_SELL
+	"time"
 )
 
 type Trade struct {
@@ -25,15 +17,15 @@ type Trade struct {
 
 type Tick struct {
 	Price float64
-	Time  civil.Date
-	Type  Side
+	Time  time.Time
+	Type  bool
 }
 
 type Profit struct {
-	PctChg    float64    `bson:"pct_chg"`
-	StartTime civil.Date `bson:"start_time"`
-	EndTime   civil.Date `bson:"end_time"`
-	Duration  int        `bson:"duration"`
+	PctChg    float64       `bson:"pct_chg"`
+	StartTime time.Time     `bson:"start_time"`
+	EndTime   time.Time     `bson:"end_time"`
+	Duration  time.Duration `bson:"duration"`
 }
 
 func NewTrade(code string, arg float64, argName string) *Trade {
@@ -50,7 +42,7 @@ func (t *Trade) Buy(k *Kline) {
 	tick := Tick{
 		Price: k.Close,
 		Time:  k.Time,
-		Type:  SIDE_BUY,
+		Type:  true,
 	}
 	t.Logs = append(t.Logs, tick)
 	t.ticks = append(t.ticks, tick)
@@ -74,7 +66,7 @@ func (t *Trade) Sell(k *Kline) {
 		PctChg:    (k.Close/avgPrice - 1) * 100,
 		StartTime: t.ticks[0].Time,
 		EndTime:   k.Time,
-		Duration:  k.Time.DaysSince(t.ticks[0].Time),
+		Duration:  k.Time.Sub(t.ticks[0].Time),
 	})
 
 	// tick logs
@@ -82,6 +74,6 @@ func (t *Trade) Sell(k *Kline) {
 	t.Logs = append(t.Logs, Tick{
 		Price: k.Close,
 		Time:  k.Time,
-		Type:  SIDE_SELL,
+		Type:  true,
 	})
 }

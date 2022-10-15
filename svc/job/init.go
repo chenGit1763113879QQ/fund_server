@@ -32,15 +32,15 @@ func init() {
 	// industry
 	util.GoJob(func() {
 		for _, p := range Markets {
-			getCategoryIndustries(p.StrMarket)
+			getCategoryIndustries(p)
 			getIndustry(p)
 		}
 	}, time.Hour*24, time.Second*3)
 
 	// kline & predict
 	util.GoJob(func() {
-		InitKlines()
-		loadKlines()
+		initKline()
+		loadKline()
 
 		WinRate()
 		PredictStock()

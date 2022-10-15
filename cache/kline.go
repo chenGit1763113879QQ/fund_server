@@ -2,8 +2,7 @@ package cache
 
 import (
 	"fund/model"
-
-	"cloud.google.com/go/civil"
+	"time"
 )
 
 type KlineCache struct {
@@ -35,7 +34,7 @@ func (s *KlineCache) LoadPKline(key string) *model.PreKline {
 func (s *KlineCache) Store(key string, value []*model.Kline) {
 	// pkline
 	pkline := &model.PreKline{
-		Time:  make([]civil.Date, len(value)),
+		Time:  make([]time.Time, len(value)),
 		Open:  make([]float64, len(value)),
 		Close: make([]float64, len(value)),
 	}

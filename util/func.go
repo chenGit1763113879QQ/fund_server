@@ -5,8 +5,10 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 	"unicode"
 
@@ -171,4 +173,37 @@ func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
 func UnmarshalJSON(body []byte, data any, path ...any) error {
 	node := jsoniter.Get(body, path...)
 	return sonic.UnmarshalString(node.ToString(), &data)
+}
+
+// ParseCode exp: 000001.SH 00700.HK AAPL.US
+func ParseCode(code string) string {
+	pre, suf, ok := strings.Cut(code, ".")
+	if ok {
+		// .DJI
+		if pre == "" && suf != "" {
+			return suf + ".US"
+		}
+		switch suf {
+		// 600519.SS
+		case "SS":
+			return pre + ".SH"
+		// normal
+		case "SH", "SZ", "HK", "US":
+			return code
+		}
+	}
+	// US
+	if len(pre) == 1 && unicode.IsLetter(rune(pre[0])) {
+		return pre + ".US"
+	}
+	// CN
+	if pre[0:2] == "SZ" || pre[0:2] == "SH" {
+		return fmt.Sprintf("%s.%s", pre[2:], pre[0:2])
+	}
+	// HK
+	if (pre[0] == '0' && len(pre) == 5) || pre[0:2] == "HK" {
+		return pre + ".HK"
+	}
+	// US
+	return pre + ".US"
 }

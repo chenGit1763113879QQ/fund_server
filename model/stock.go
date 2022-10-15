@@ -1,12 +1,10 @@
 package model
 
 import (
-	"fmt"
 	"fund/util"
+	"time"
 
-	"cloud.google.com/go/civil"
 	"github.com/mozillazg/go-pinyin"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 var PinyinArg = pinyin.NewArgs()
@@ -28,21 +26,34 @@ type Index struct {
 	Stock Stock `json:"quote"`
 }
 
-type Stock struct {
+type Basic struct {
 	MarketType util.Code `bson:"marketType"` // 市场
 	Type       util.Code `bson:"type"`       // 类型
 
-	Vol         int   `json:"volume"`                           // 成交量
-	Followers   int   `json:"followers"`                        // 关注数
-	LimitUpDays int   `json:"limitup_days" bson:"limitup_days"` // 涨停天数
-	Time        int64 `json:"time" bson:"time,omitempty"`
-
-	Id     string `bson:"_id"`
-	Symbol string `json:"symbol"`
-	Name   string `json:"name"`
-
+	Id         string `bson:"_id"`                   // 代码
 	Pinyin     string `bson:"pinyin,omitempty"`      // 拼音
 	LazyPinyin string `bson:"lazy_pinyin,omitempty"` // 简单拼音
+}
+
+func (s *Basic) AddPinYin(name string) {
+	if util.IsChinese(name) {
+		for _, c := range pinyin.LazyPinyin(name, PinyinArg) {
+			s.Pinyin += c
+			s.LazyPinyin += string(c[0])
+		}
+	}
+}
+
+type Stock struct {
+	Basic `bson:",inline"`
+
+	Vol         int   `json:"volume"`                                     // 成交量
+	Followers   int   `json:"followers"`                                  // 关注数
+	LimitUpDays int   `json:"limitup_days" bson:"limitup_days,omitempty"` // 涨停天数
+	Time        int64 `json:"time" bson:"time,omitempty"`
+
+	Symbol string `json:"symbol"`
+	Name   string `json:"name"`
 
 	PctChg float64 `json:"percent" bson:"pct_chg"` // 涨跌幅
 	Amp    float64 `json:"amplitude"`              // 振幅
@@ -78,11 +89,15 @@ type Stock struct {
 }
 
 type Industry struct {
-	Vol       int
-	Followers int
-	Count     int
+	Basic `bson:",inline"`
 
-	Id string `bson:"_id"`
+	Vol       int64
+	Followers int64
+	Count     int64
+
+	Id     string `bson:"_id"` // 代码
+	Symbol string `json:"encode"`
+	Name   string `json:"name,omitempty"`
 
 	PctChg  float64 `bson:"pct_chg"`
 	Pb      float64
@@ -98,65 +113,16 @@ type Industry struct {
 
 func (s *Stock) CalData(m *Market) {
 	if m.Freq() == 2 {
-		// add pinyin
-		if util.IsChinese(s.Name) {
-			for _, c := range pinyin.LazyPinyin(s.Name, PinyinArg) {
-				s.Pinyin += c
-				s.LazyPinyin += string(c[0])
-			}
-		}
+		s.AddPinYin(s.Name)
 	}
-	s.Id = s.Symbol
+
+	s.Id = util.ParseCode(s.Symbol)
 	s.MarketType = m.Market
 	s.Type = m.Type
-
-	// format code
-	switch m.Market {
-	case util.MARKET_CN:
-		s.Id = fmt.Sprintf("%s.%s", s.Id[2:], s.Id[0:2])
-
-	case util.MARKET_HK:
-		if s.Id[0:2] == "HK" {
-			s.Id = s.Id[2:]
-		}
-		s.Id += ".HK"
-
-	case util.MARKET_US:
-		if s.Id[0] == '.' {
-			s.Id = s.Id[1:]
-		}
-		s.Id += ".US"
-	}
 
 	if s.Vol > 0 {
 		s.Avg = s.Amount / float64(s.Vol)
 	}
-}
-
-type Groups struct {
-	Groups []Group  `json:"groups"`
-	Stocks []bson.M `json:"stocks"`
-}
-
-type Group struct {
-	IsActive bool `json:"isActive"`
-	IsSys    bool `json:"isSys"`
-
-	Name   string `json:"name" binding:"max=6"`
-	Market string `json:"market,omitempty" bson:",omitempty"`
-
-	Parent []string `json:"parent,omitempty" bson:",omitempty" binding:"max=3,unique"`
-	List   []string `json:"list"`
-
-	MarketRange []Range `json:"market_range" bson:",omitempty"`
-	FinaRange   []Range `json:"fina_range" bson:",omitempty"`
-}
-
-type Range struct {
-	Name  string  `json:"name"`
-	Left  float64 `json:"left"`
-	Right float64 `json:"right"`
-	Unit  float64 `json:"unit"`
 }
 
 type Kline struct {
@@ -168,7 +134,7 @@ type Kline struct {
 	Ps  float64 `bson:",omitempty"`
 	Pcf float64 `bson:",omitempty"`
 
-	Time      civil.Date
+	Time      time.Time
 	TimeStamp int64 `bson:"-"`
 
 	Code       string
@@ -202,17 +168,8 @@ type Kline struct {
 	NetVolHK    int64   `bson:"net_vol_hk,omitempty" mapstructure:"net_volume_hk"`
 }
 
-type MinuteKline struct {
-	Code      string
-	TradeDate civil.Date `bson:"trade_date"`
-	Time      []int64    `bson:"time" mapstructure:"tick_at"`
-	Open      []float64  `mapstructure:"open_px"`
-	Close     []float64  `mapstructure:"close_px`
-	Avg       []float64  `mapstructure:"avg_px`
-}
-
 type PreKline struct {
-	Time  []civil.Date
+	Time  []time.Time
 	Close []float64
 	Open  []float64
 }
@@ -228,10 +185,10 @@ type PredictRes struct {
 	Period    int
 	Limit     int
 	Std       float64
-	SrcCode   string     `bson:"src_code"`
-	MatchCode string     `bson:"match_code"`
-	StartDate civil.Date `bson:"start_date"`
-	PrePctChg float64    `bson:"pre_pct_chg"`
+	SrcCode   string    `bson:"src_code"`
+	MatchCode string    `bson:"match_code"`
+	StartDate time.Time `bson:"start_date"`
+	PrePctChg float64   `bson:"pre_pct_chg"`
 }
 
 type PredictArr []*PredictRes
