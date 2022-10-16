@@ -116,7 +116,7 @@ func Search(c *gin.Context) {
 			bson.M{"lazy_pinyin": bson.M{"$regex": input, "$options": "i"}},
 			bson.M{"pinyin": bson.M{"$regex": input, "$options": "i"}},
 		},
-	}).Select(listOpt).Sort("marketType", "-type", "-amount").Limit(10).All(&data)
+	}).Select(listOpt).Sort("type", "marketType", "-amount").Limit(20).All(&data)
 
 	midware.Success(c, data)
 }

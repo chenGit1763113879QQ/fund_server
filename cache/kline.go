@@ -33,12 +33,10 @@ func (s *KlineCache) Store(key string, value []*model.Kline) {
 	// pkline
 	pkline := &model.PreKline{
 		Time:  make([]time.Time, len(value)),
-		Open:  make([]float64, len(value)),
 		Close: make([]float64, len(value)),
 	}
 	for i, v := range value {
 		pkline.Time[i] = v.Time
-		pkline.Open[i] = v.Open
 		pkline.Close[i] = v.Close
 	}
 	for i, k := range s.keys {

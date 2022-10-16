@@ -165,7 +165,6 @@ type Kline struct {
 type PreKline struct {
 	Time  []time.Time
 	Close []float64
-	Open  []float64
 }
 
 type PredictRes struct {

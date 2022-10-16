@@ -67,10 +67,7 @@ func predict(strs ...string) {
 		return
 	}
 
-	factor := df.Open[n-days]
-	df.Open = oneness(df.Open[n-days:], factor)
-	df.Close = oneness(df.Close[n-days:], factor)
-
+	df.Close = oneness(df.Close[n-days:])
 	// trend
 	trend := df.Close[0] > df.Close[len(df.Close)-1]
 
@@ -94,16 +91,16 @@ func predict(strs ...string) {
 		// rolling window
 		for lp := 0; lp < n-PREDICT_DAYS-days; lp++ {
 			rp := lp + days
-
+			
+			if lp > len(v.Close) || rp > len(v.Close) {
+				continue
+			}
 			// trend
 			if (v.Close[lp] > v.Close[rp]) != trend {
 				continue
 			}
-
 			// std
-			factor := v.Open[lp]
-			stdSum := std(df.Open, oneness(v.Open[lp:rp], factor)) +
-				std(df.Close, oneness(v.Close[lp:rp], factor))
+			stdSum := std(df.Close, oneness(v.Close[lp:rp]))
 
 			if stdSum < res.Std {
 				res.StartDate = v.Time[lp]
@@ -115,9 +112,8 @@ func predict(strs ...string) {
 	})
 
 	sort.Sort(results)
-	if results.Len() > 20 {
-		results = results[0:20]
-	}
+	results = results[0:50]
+
 	// save db
 	db.Predict.InsertMany(ctx, results)
 	db.LimitDB.Set(ctx, fmt.Sprintf("predict_%d:%s", days, code), 1, time.Hour*12)
