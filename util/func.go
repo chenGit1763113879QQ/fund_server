@@ -133,7 +133,9 @@ func Md5Code(code string) string {
 // Check str is Chinese
 func IsChinese(str string) bool {
 	for _, r := range str {
-		return unicode.Is(unicode.Han, r)
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
 	}
 	return false
 }

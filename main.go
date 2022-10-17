@@ -15,7 +15,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	r.Use(midware.FlowController)
+	// r.Use(midware.FlowController)
 
 	api := r.Group("/api")
 	ws := r.Group("/ws")

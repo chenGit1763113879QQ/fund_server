@@ -128,8 +128,7 @@ type Kline struct {
 	Ps  float64 `bson:",omitempty"`
 	Pcf float64 `bson:",omitempty"`
 
-	Time      time.Time
-	TimeStamp int64 `bson:"-"`
+	Time int64 `mapstructure:"timestamp"`
 
 	Code       string
 	WeightAvg  float64 `bson:"weight_avg,omitempty"`
@@ -143,10 +142,6 @@ type Kline struct {
 	Amount float64
 
 	MainNet float64 `bson:",omitempty"`
-
-	MACD     float64 `bson:",omitempty"`
-	MACD_DEA float64 `bson:",omitempty" mapstructure:"dea"`
-	MACD_DIF float64 `bson:",omitempty" mapstructure:"dif"`
 
 	BOLL_MID float64 `bson:",omitempty" mapstructure:"ma20"`
 	BOLL_UP  float64 `bson:",omitempty" mapstructure:"ub"`
@@ -163,8 +158,15 @@ type Kline struct {
 }
 
 type PreKline struct {
-	Time  []time.Time
+	Time  []int64
 	Close []float64
+}
+
+func (x *PreKline) Len() int {
+	if x == nil || x.Close == nil {
+		return -1
+	}
+	return len(x.Close)
 }
 
 type PredictRes struct {

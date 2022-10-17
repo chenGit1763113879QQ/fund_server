@@ -29,7 +29,7 @@ func PredictStock() {
 
 func loadKline() {
 	t, _ := time.Parse("2006/01/02", "2015/01/01")
-	cache.Kline.New(getCNStocks())
+	cache.New(getCNStocks())
 
 	p := util.NewPool()
 	for _, code := range getCNStocks() {
@@ -42,12 +42,12 @@ func loadKline() {
 				Match(bson.M{"code": id, "time": bson.M{"$gt": t}}).
 				Do()).All(&data)
 
-			cache.Kline.Store(id, data)
+			cache.Store(id, data)
 		}, code)
 	}
 	p.Wait()
 
-	log.Info().Msgf("init predict kline[%d] success", cache.Kline.Len())
+	log.Info().Msgf("init predict kline[%d] success", cache.Len())
 }
 
 func predict(strs ...string) {
@@ -61,13 +61,13 @@ func predict(strs ...string) {
 	}
 
 	// src
-	df := cache.Kline.LoadPKline(code)
-	n := len(df.Close)
-	if n < days {
+	df := cache.LoadPKline(code)
+	n1 := df.Len()
+	if n1 < days {
 		return
 	}
 
-	df.Close = oneness(df.Close[n-days:])
+	df.Close = oneness(df.Close[n1-days:])
 	// trend
 	trend := df.Close[0] > df.Close[len(df.Close)-1]
 
@@ -75,11 +75,7 @@ func predict(strs ...string) {
 	db.Predict.RemoveAll(ctx, &model.PredictRes{SrcCode: code, Period: days})
 	results := make(model.PredictArr, 0)
 
-	cache.Kline.RangePKline(func(k string, v *model.PreKline) {
-		n := len(v.Close)
-		if n < days {
-			return
-		}
+	cache.RangePKline(func(k string, v *model.PreKline) {
 		res := &model.PredictRes{
 			SrcCode:   code,
 			MatchCode: k,
@@ -89,12 +85,8 @@ func predict(strs ...string) {
 		}
 
 		// rolling window
-		for lp := 0; lp < n-PREDICT_DAYS-days; lp++ {
+		for lp := 0; lp < v.Len()-PREDICT_DAYS-days; lp++ {
 			rp := lp + days
-			
-			if lp > len(v.Close) || rp > len(v.Close) {
-				continue
-			}
 			// trend
 			if (v.Close[lp] > v.Close[rp]) != trend {
 				continue
@@ -103,7 +95,7 @@ func predict(strs ...string) {
 			stdSum := std(df.Close, oneness(v.Close[lp:rp]))
 
 			if stdSum < res.Std {
-				res.StartDate = v.Time[lp]
+				res.StartDate = time.Unix(v.Time[lp], 0)
 				res.Std = stdSum
 				res.PrePctChg = (v.Close[rp]/v.Close[lp] - 1) * 100
 			}
@@ -112,7 +104,7 @@ func predict(strs ...string) {
 	})
 
 	sort.Sort(results)
-	results = results[0:50]
+	results = results[0:20]
 
 	// save db
 	db.Predict.InsertMany(ctx, results)

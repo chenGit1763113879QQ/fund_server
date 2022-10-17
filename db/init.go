@@ -71,7 +71,7 @@ func init() {
 
 	// Redis
 	LimitDB = redis.NewClient(&redis.Options{
-		Addr: redisHost, DB: 1,
+		Addr: redisHost, DB: 0,
 	})
 }
 

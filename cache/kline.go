@@ -2,64 +2,66 @@ package cache
 
 import (
 	"fund/model"
-	"time"
 )
 
 type KlineCache struct {
-	keys   []string
-	kline  [][]*model.Kline
-	pkline []*model.PreKline
+	Code   string
+	Kline  []*model.Kline
+	Pkline *model.PreKline
 }
 
-var Kline = new(KlineCache)
+var Kline []*KlineCache
 
-func (s *KlineCache) New(keys []string) {
-	s.keys = keys
-	s.kline = make([][]*model.Kline, len(keys))
-	s.pkline = make([]*model.PreKline, len(keys))
+func New(keys []string) {
+	Kline = make([]*KlineCache, len(keys))
+	for i, k := range keys {
+		Kline[i] = &KlineCache{Code: k}
+	}
 }
 
-func (s *KlineCache) LoadPKline(key string) *model.PreKline {
-	for i, k := range s.keys {
-		if key == k {
-			return s.pkline[i]
+func LoadPKline(key string) *model.PreKline {
+	for _, k := range Kline {
+		if key == k.Code {
+			return k.Pkline
 		}
 	}
 	return nil
 }
 
 // Store kline and pkline
-func (s *KlineCache) Store(key string, value []*model.Kline) {
+func Store(key string, value []*model.Kline) {
 	// pkline
-	pkline := &model.PreKline{
-		Time:  make([]time.Time, len(value)),
+	pk := &model.PreKline{
+		Time:  make([]int64, len(value)),
 		Close: make([]float64, len(value)),
 	}
+
 	for i, v := range value {
-		pkline.Time[i] = v.Time
-		pkline.Close[i] = v.Close
+		pk.Time[i] = v.Time
+		pk.Close[i] = v.Close
 	}
-	for i, k := range s.keys {
-		if key == k {
-			s.kline[i] = value
-			s.pkline[i] = pkline
+
+	for _, k := range Kline {
+		if key == k.Code {
+			k.Kline = value
+			k.Pkline = pk
 			return
 		}
 	}
 }
 
-func (s *KlineCache) RangeKline(f func(k string, v []*model.Kline)) {
-	for i, k := range s.keys {
-		f(k, s.kline[i])
+func RangeKline(f func(k string, v []*model.Kline)) {
+	for _, k := range Kline {
+		f(k.Code, k.Kline)
 	}
 }
 
-func (s *KlineCache) RangePKline(f func(k string, v *model.PreKline)) {
-	for i, k := range s.keys {
-		f(k, s.pkline[i])
+func RangePKline(f func(k string, v *model.PreKline)) {
+	for _, k := range Kline {
+		f(k.Code, k.Pkline)
 	}
 }
 
-func (s *KlineCache) Len() int {
-	return len(s.keys)
+func Len() int {
+	return len(Kline)
 }

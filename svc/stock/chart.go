@@ -112,12 +112,14 @@ func GetKline(c *gin.Context) {
 		}
 	}
 
+	fmtTime := bson.M{"$toDate": bson.M{"$multiply": bson.A{"$time", 1000}}}
+
 	var data []bson.M
 	db.KlineDB.Collection(util.Md5Code(req.Code)).Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": req.StartDate}}).
+		Match(bson.M{"code": req.Code, "time": bson.M{"$gt": req.StartDate.Unix()}}).
 		Group(bson.M{
-			"_id":         bson.M{"$dateToString": bson.M{"format": format, "date": "$time"}},
-			"time":        bson.M{"$last": "$time"},
+			"_id":         bson.M{"$dateToString": bson.M{"format": format, "date": fmtTime}},
+			"time":        bson.M{"$last": fmtTime},
 			"open":        bson.M{"$first": "$open"},
 			"close":       bson.M{"$last": "$close"},
 			"high":        bson.M{"$max": "$high"},

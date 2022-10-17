@@ -19,7 +19,6 @@ require (
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/viper v1.13.0
 	go.mongodb.org/mongo-driver v1.10.3
-	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af
 	gonum.org/v1/gonum v0.12.0
 )
 

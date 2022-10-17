@@ -8,18 +8,33 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/time/rate"
 )
 
-var limit = rate.NewLimiter(20, 1000)
+const (
+	poolSize = 2000
+)
+
+var ctx = context.Background()
+
+func init() {
+	go func() {
+		for {
+			length, _ := db.LimitDB.LLen(ctx, "global").Result()
+			if length < poolSize {
+				db.LimitDB.LPush(ctx, "global", 1)
+			}
+			time.Sleep(poolSize / time.Minute)
+		}
+	}()
+}
 
 // 流量控制
 func FlowController(c *gin.Context) {
 	ip := c.ClientIP()
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second*3)
-	if err := limit.Wait(c); err != nil {
-		Error(c, errors.New("服务器繁忙"))
+	r, err := db.LimitDB.LPop(ctx, "global").Result()
+	if r == "" || err != nil {
+		Error(c, errors.New("server is busy"), http.StatusForbidden)
 		return
 	}
 
@@ -27,7 +42,7 @@ func FlowController(c *gin.Context) {
 	if ok == 1 {
 		times, _ := db.LimitDB.Incr(ctx, ip).Result()
 		if times > 250 {
-			Error(c, errors.New("请不要频繁访问接口"), http.StatusForbidden)
+			Error(c, errors.New("api forbidden"), http.StatusForbidden)
 		}
 	} else {
 		db.LimitDB.SetEX(ctx, ip, 1, time.Minute)

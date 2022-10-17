@@ -49,7 +49,7 @@ func getKline(strs ...string) {
 		return
 	}
 
-	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&type=before&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,agt,ggt,macd,boll,balance", symbol, time.Now().UnixMilli())
+	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&type=before&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,agt,ggt,boll,balance", symbol, time.Now().UnixMilli())
 	body, _ := util.XueQiuAPI(url)
 
 	// unmarshal
@@ -60,17 +60,14 @@ func getKline(strs ...string) {
 	util.UnmarshalJSON(body, &data, "data")
 
 	var klines []*model.Kline
-	// decode
 	util.DecodeJSONItems(data.Column, data.Item, &klines)
 	if klines == nil {
 		return
 	}
 
-	// set code and time
-	layout := "2006/01/02"
 	for _, k := range klines {
 		k.Code = id
-		k.Time, _ = time.Parse(layout, time.UnixMilli(k.TimeStamp).Format(layout))
+		k.Time /= 1000
 	}
 
 	// save
@@ -138,7 +135,6 @@ func getWinRate(id string) {
 	if !util.IsCNStock(id) {
 		return
 	}
-
 	// count
 	for atomic.LoadInt32(&count) < 1 {
 	}
@@ -168,7 +164,7 @@ func getWinRate(id string) {
 	// save db
 	for _, i := range data {
 		t, _ := time.Parse("20060102", i.TradeDate)
-		bulk.UpdateOne(bson.M{"code": id, "time": t}, bson.M{"$set": i})
+		bulk.UpdateOne(bson.M{"code": id, "time": t.Unix()}, bson.M{"$set": i})
 	}
 	bulk.Run(ctx)
 

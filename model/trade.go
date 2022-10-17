@@ -2,7 +2,6 @@ package model
 
 import (
 	"fund/util"
-	"time"
 )
 
 type Trade struct {
@@ -17,15 +16,15 @@ type Trade struct {
 
 type Tick struct {
 	Price float64
-	Time  time.Time
+	Time  int64
 	Type  bool
 }
 
 type Profit struct {
-	PctChg    float64       `bson:"pct_chg"`
-	StartTime time.Time     `bson:"start_time"`
-	EndTime   time.Time     `bson:"end_time"`
-	Duration  time.Duration `bson:"duration"`
+	PctChg    float64 `bson:"pct_chg"`
+	StartTime int64   `bson:"start_time"`
+	EndTime   int64   `bson:"end_time"`
+	Duration  int64   `bson:"duration"`
 }
 
 func NewTrade(code string, arg float64, argName string) *Trade {
@@ -66,7 +65,7 @@ func (t *Trade) Sell(k *Kline) {
 		PctChg:    (k.Close/avgPrice - 1) * 100,
 		StartTime: t.ticks[0].Time,
 		EndTime:   k.Time,
-		Duration:  k.Time.Sub(t.ticks[0].Time),
+		Duration:  k.Time - t.ticks[0].Time,
 	})
 
 	// tick logs
