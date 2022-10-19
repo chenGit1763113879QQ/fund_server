@@ -41,7 +41,7 @@ func getCategoryIndustries(m *model.Market) {
 		// set basic
 		ids.Id = ids.Symbol
 		ids.MarketType = m.Market
-		ids.Type = util.TYPE_IDS
+		ids.Type = util.IDS
 		ids.AddPinYin(ids.Name)
 
 		// save
@@ -65,7 +65,7 @@ func getIndustry(m *model.Market) {
 	var data []*model.Industry
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"marketType": m.Market, "type": util.TYPE_IDS}).
+		Match(bson.M{"marketType": m.Market, "type": util.IDS}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
 			"symbol":    1,

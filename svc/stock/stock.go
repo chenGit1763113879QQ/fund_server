@@ -3,6 +3,7 @@ package stock
 import (
 	"context"
 	"errors"
+	"fmt"
 	"fund/db"
 	"fund/midware"
 	"fund/svc/job"
@@ -50,12 +51,12 @@ func GetStockDetail(code string) bson.M {
 // GetStockList 获取股票列表
 func GetStockList(c *gin.Context) {
 	var req struct {
-		Parent     string   `form:"parent"`
-		MarketType uint8    `form:"marketType"`
-		Sort       string   `form:"sort"`
-		Chart      string   `form:"chart"`
-		Page       int64    `form:"page"`
-		List       []string `form:"list" json:"list" bson:"list"`
+		Parent     string    `form:"parent"`
+		MarketType util.Code `form:"marketType"`
+		Sort       string    `form:"sort"`
+		Chart      string    `form:"chart"`
+		Page       int64     `form:"page"`
+		List       []string  `form:"list" json:"list" bson:"list"`
 	}
 	c.ShouldBind(&req)
 
@@ -71,7 +72,7 @@ func GetStockList(c *gin.Context) {
 
 	} else if req.MarketType > 0 {
 		query = db.Stock.Find(ctx, bson.M{
-			"marketType": req.MarketType, "type": util.TYPE_STOCK,
+			"marketType": req.MarketType, "type": util.STOCK,
 		})
 
 	} else {
@@ -103,7 +104,7 @@ func GetStockList(c *gin.Context) {
 	midware.Success(c, data)
 }
 
-// Search 搜索股票内容
+// Search 搜索
 func Search(c *gin.Context) {
 	input := c.Query("input") + ".*"
 	var data []bson.M
@@ -135,7 +136,7 @@ func AllBKDetails(c *gin.Context) {
 	data := make([]bson.M, 0)
 
 	db.Stock.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"marketType": req.Market, "type": util.TYPE_IDS}).
+		Match(bson.M{"marketType": req.Market, "type": util.IDS}).
 		Sort(bson.M{req.Sort: -1}).Limit(50).
 		Lookup("stock", "members", "_id", "children").
 		Project(bson.M{
@@ -172,18 +173,34 @@ func PredictKline(c *gin.Context) {
 
 // GetPortfolio 获取雪球自选股
 func GetPortfolio(c *gin.Context) {
-	url := XQHOST + "/portfolio/stock/list.json?category=1&size=500"
+	// 获取分组
+	url := XQHOST + "/portfolio/list.json?system=true"
 	body, _ := util.XueQiuAPI(url)
 
-	var data []struct {
-		Symbol  string `json:"symbol"`
-		Created int    `json:"created"`
+	var group []*struct {
+		Id       int    `json:"id"`
+		OrderId  int    `json:"order_id"`
+		Category int    `json:"category"`
+		Name     string `json:"name"`
 	}
-	util.UnmarshalJSON(body, &data, "data", "stocks")
+	util.UnmarshalJSON(body, &group, "data", "stocks")
 
-	symbols := make([]string, len(data))
-	for i, s := range data {
-		symbols[i] = s.Symbol
+	symbols := make([]string, 0)
+
+	// 获取详情
+	for _, g := range group {
+		url = fmt.Sprintf("%s/portfolio/stock/list.json?category=%d&size=500&pid=%d", XQHOST, g.Category, g.Id)
+		body, _ = util.XueQiuAPI(url)
+
+		var data []struct {
+			Symbol  string `json:"symbol"`
+			Created int    `json:"created"`
+		}
+		util.UnmarshalJSON(body, &data, "data", "stocks")
+
+		for _, s := range data {
+			symbols = append(symbols, s.Symbol)
+		}
 	}
 
 	var stocks []bson.M

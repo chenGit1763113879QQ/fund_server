@@ -6,33 +6,20 @@ import (
 	"fund/model"
 	"fund/util"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var count int32 = 195
-
-func init() {
-	// start limit count
-	go func() {
-		for {
-			time.Sleep(time.Minute)
-			atomic.SwapInt32(&count, 195)
-		}
-	}()
-}
-
 func initKline() {
 	var stocks []struct {
 		Id     string `bson:"_id"`
 		Symbol string
 	}
-	db.Stock.Find(ctx, bson.M{"type": util.TYPE_STOCK}).All(&stocks)
+	db.Stock.Find(ctx, bson.M{"type": util.STOCK}).All(&stocks)
 
-	p := util.NewPool(8)
+	p := util.NewPool(4)
 	// kline
 	for _, i := range stocks {
 		p.NewTask(getKline, i.Symbol, i.Id)
@@ -60,26 +47,28 @@ func getKline(strs ...string) {
 	util.UnmarshalJSON(body, &data, "data")
 
 	var klines []*model.Kline
-	util.DecodeJSONItems(data.Column, data.Item, &klines)
-	if klines == nil {
+	if err := util.DecodeJSONItems(data.Column, data.Item, &klines); err != nil {
 		return
 	}
+
+	// collection
+	coll := db.KlineDB.Collection(util.Md5Code(id))
+	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
+	bulk := coll.Bulk()
 
 	for _, k := range klines {
 		k.Code = id
 		k.Time /= 1000
+		bulk.UpdateOne(bson.M{"code": k.Code, "time": k.Time}, bson.M{"$set": k})
 	}
-
-	// save
-	coll := db.KlineDB.Collection(util.Md5Code(id))
-	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
-	coll.RemoveAll(ctx, bson.M{"code": id})
+	// run
+	bulk.Run(ctx)
 	coll.InsertMany(ctx, klines)
 
 	db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*24)
 
 	// winner_rate
-	go getWinRate(id)
+	getWinRate(id)
 }
 
 func getMinuteKline(strs ...string) {
@@ -87,7 +76,6 @@ func getMinuteKline(strs ...string) {
 	if !util.IsCNStock(id) {
 		return
 	}
-
 	symbol := id
 	if strings.Contains(id, ".SH") {
 		symbol = strings.ReplaceAll(id, ".SH", ".SS")
@@ -135,11 +123,6 @@ func getWinRate(id string) {
 	if !util.IsCNStock(id) {
 		return
 	}
-	// count
-	for atomic.LoadInt32(&count) < 1 {
-	}
-	atomic.AddInt32(&count, -1)
-
 	// find cache
 	if ok, _ := db.LimitDB.Exists(ctx, "winner_rate:"+id).Result(); ok > 0 {
 		return

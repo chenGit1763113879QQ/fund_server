@@ -54,7 +54,7 @@ func getRealStock(m *model.Market) {
 		if freq >= 1 {
 			go getDistribution(m)
 
-			if m.Market == util.MARKET_CN {
+			if m.Market == util.CN {
 				go getMainFlow()
 				go getNorthMoney()
 			}
@@ -103,7 +103,7 @@ func updateMinute(s []*model.Stock, m *model.Market) {
 func getCNStocks() []string {
 	var id []string
 	db.Stock.Find(ctx, bson.M{
-		"marketType": util.MARKET_CN, "type": util.TYPE_STOCK,
+		"marketType": util.CN, "type": util.STOCK,
 		"mc": bson.M{"$gte": 50 * math.Pow(10, 8)},
 	}).Distinct("_id", &id)
 	return id

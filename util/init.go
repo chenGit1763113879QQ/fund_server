@@ -9,14 +9,16 @@ import (
 type Code uint8
 
 const (
-	MARKET_CN Code = iota + 1
-	MARKET_HK
-	MARKET_US
+	// market
+	CN Code = iota + 1
+	HK
+	US
 
-	TYPE_STOCK
-	TYPE_INDEX
-	TYPE_FUND
-	TYPE_IDS
+	// type
+	STOCK
+	INDEX
+	FUND
+	IDS
 )
 
 func init() {

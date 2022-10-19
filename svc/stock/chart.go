@@ -51,31 +51,31 @@ func GetSimpleChart(code string, chartType string) any {
 			Sort("time").All(&arr)
 
 		switch m.Market {
-		case util.MARKET_CN:
+		case util.CN:
 			data.Total = 240 / 2
 
-		case util.MARKET_HK:
+		case util.HK:
 			data.Total = 310 / 2
 
-		case util.MARKET_US:
+		case util.US:
 			data.Total = 390 / 2
 		}
 		data.Value = arr
 
 	case "60day":
 		var arr []struct {
-			Time  time.Time `json:"time"`
-			Close float64   `json:"value" bson:"close"`
+			Time  int64   `json:"time"`
+			Close float64 `json:"value" bson:"close"`
 		}
 
 		t, _ := time.Parse("2006/01/02", "2022/01/01")
 
 		db.KlineDB.Collection(util.Md5Code(code)).
-			Find(ctx, bson.M{"code": code, "time": bson.M{"$gt": t}}).
+			Find(ctx, bson.M{"code": code, "time": bson.M{"$gt": t.Unix()}}).
 			Select(bson.M{"close": 1, "time": 1}).
-			Sort("-time").Limit(100).All(&arr)
+			Sort("-time").Limit(60).All(&arr)
 
-		data.Total = 100
+		data.Total = 60
 		data.Value = arr
 		if len(arr) > 0 {
 			data.Open = arr[len(arr)-1].Close

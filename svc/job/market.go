@@ -32,7 +32,7 @@ func getDistribution(m *model.Market) {
 		nums[i] = data[i].Count
 	}
 
-	if m.Market == util.MARKET_CN {
+	if m.Market == util.CN {
 		label[0] = "跌停"
 		label[10] = "涨停"
 	}
@@ -80,7 +80,7 @@ func getMarketStatus() {
 				cst, _ := time.LoadLocation(i.Market.TimeZone)
 				p.TradeTime = time.UnixMilli(i.Stock.Time).In(cst)
 
-				i.Stock.Type = util.TYPE_INDEX
+				i.Stock.Type = util.INDEX
 
 				db.Stock.UpdateId(ctx, i.Stock.Id, bson.M{"$set": i.Stock})
 				db.Stock.InsertOne(ctx, i.Stock)

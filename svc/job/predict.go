@@ -124,10 +124,6 @@ func oneness(arr []float64, factors ...float64) []float64 {
 }
 
 func std(arr1 []float64, arr2 []float64) float64 {
-	if len(arr1) != len(arr2) {
-		panic("unequal length")
-	}
-
 	arr := make([]float64, len(arr1))
 	for i := range arr {
 		arr[i] = arr1[i] - arr2[i]

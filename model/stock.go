@@ -134,12 +134,13 @@ type Kline struct {
 	WeightAvg  float64 `bson:"weight_avg,omitempty"`
 	WinnerRate float64 `bson:"winner_rate,omitempty"`
 
-	Open   float64
-	High   float64
-	Low    float64
-	Close  float64
-	Vol    int64 `mapstructure:"volume"`
-	Amount float64
+	Open    float64
+	High    float64
+	Low     float64
+	Close   float64
+	Vol     int64 `mapstructure:"volume"`
+	PctRank int64
+	Amount  float64
 
 	MainNet float64 `bson:",omitempty"`
 

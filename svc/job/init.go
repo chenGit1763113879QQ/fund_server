@@ -12,9 +12,9 @@ var (
 	ctx = context.Background()
 
 	Markets = []*model.Market{
-		{Market: util.MARKET_CN, Type: util.TYPE_STOCK, StrMarket: "CN", StrType: "sh_sz"},
-		{Market: util.MARKET_HK, Type: util.TYPE_STOCK, StrMarket: "HK", StrType: "hk"},
-		{Market: util.MARKET_US, Type: util.TYPE_STOCK, StrMarket: "US", StrType: "us"},
+		{Market: util.CN, Type: util.STOCK, StrMarket: "CN", StrType: "sh_sz"},
+		{Market: util.HK, Type: util.STOCK, StrMarket: "HK", StrType: "hk"},
+		{Market: util.US, Type: util.STOCK, StrMarket: "US", StrType: "us"},
 	}
 
 	Cond = sync.NewCond(&sync.Mutex{})
@@ -33,7 +33,7 @@ func init() {
 	util.GoJob(func() {
 		for _, p := range Markets {
 			getCategoryIndustries(p)
-			getIndustry(p)
+			go getIndustry(p)
 		}
 	}, time.Hour*24, time.Second*3)
 

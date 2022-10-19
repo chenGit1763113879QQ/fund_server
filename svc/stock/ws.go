@@ -76,13 +76,13 @@ func ConnectMarket(c *gin.Context) {
 		case "I":
 			db.Stock.Find(ctx, bson.M{
 				"marketType": req.MarketType,
-				"type":       util.TYPE_IDS,
+				"type":       util.IDS,
 			}).Sort(req.BkSort).Select(listOpt).Limit(6).All(&dt)
 
 		case "Map":
 			db.Stock.Find(ctx, bson.M{
 				"marketType": req.MarketType,
-				"type":       util.TYPE_IDS,
+				"type":       util.IDS,
 			}).Sort("-amount").Select(listOpt).Limit(15).All(&dt)
 		}
 		ws.WriteJson(bson.M{"bk": dt})
