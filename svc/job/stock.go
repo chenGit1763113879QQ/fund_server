@@ -9,7 +9,9 @@ import (
 	"strings"
 	"time"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
+	"github.com/xgzlucario/structx"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -28,12 +30,13 @@ func getRealStock(m *model.Market) {
 			continue
 		}
 
-		var data []*model.Stock
-		util.UnmarshalJSON(body, &data, "data", "list")
+		data := structx.NewList[*model.Stock]()
+		node := jsoniter.Get(body, "data", "list")
+		data.UnmarshalJSON([]byte(node.ToString()))
 
 		bulk := db.Stock.Bulk()
 
-		for _, s := range data {
+		for _, s := range data.Values() {
 			s.CalData(m)
 
 			if s.Price > 0 {
@@ -48,7 +51,7 @@ func getRealStock(m *model.Market) {
 		}
 
 		bulk.Run(ctx)
-		go updateMinute(data, m)
+		go updateMinute(data.Values(), m)
 		go getIndustry(m)
 
 		if freq >= 1 {

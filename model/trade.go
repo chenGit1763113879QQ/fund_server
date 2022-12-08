@@ -1,7 +1,7 @@
 package model
 
 import (
-	"fund/util"
+	"gonum.org/v1/gonum/stat"
 )
 
 type Trade struct {
@@ -58,7 +58,7 @@ func (t *Trade) Sell(k *Kline) {
 		holdsPrice[i] = t.ticks[i].Price
 	}
 
-	avgPrice := util.Mean(holdsPrice)
+	avgPrice := stat.Mean(holdsPrice, nil)
 
 	// profit
 	t.Profits = append(t.Profits, Profit{

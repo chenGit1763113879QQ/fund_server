@@ -15,7 +15,7 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
-	// r.Use(midware.FlowController)
+	r.Use(midware.FlowController)
 
 	api := r.Group("/api")
 	ws := r.Group("/ws")
@@ -25,8 +25,8 @@ func main() {
 		POST("/login", user.Login).
 		POST("/newAuth", user.Register)
 
-	// api.Use(midware.Authorize)
-	// ws.Use(midware.Authorize)
+	api.Use(midware.Authorize)
+	ws.Use(midware.Authorize)
 
 	ws.Group("/stock").
 		GET("/detail", stock.ConnectItems).

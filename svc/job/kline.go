@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/xgzlucario/structx"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -19,7 +20,7 @@ func initKline() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.STOCK}).All(&stocks)
 
-	p := util.NewPool(4)
+	p := structx.NewPool[string](4)
 	// kline
 	for _, i := range stocks {
 		p.NewTask(getKline, i.Symbol, i.Id)

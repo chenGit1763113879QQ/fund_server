@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/xgzlucario/structx"
 	"go.mongodb.org/mongo-driver/bson"
 	"gonum.org/v1/gonum/stat"
 )
@@ -19,7 +20,7 @@ import (
 const PREDICT_DAYS = 20 // 展示的预测天数
 
 func PredictStock() {
-	p := util.NewPool()
+	p := structx.NewPool[string]()
 	for _, k := range getCNStocks() {
 		p.NewTask(predict, k, "60")
 	}
@@ -31,7 +32,7 @@ func loadKline() {
 	t, _ := time.Parse("2006/01/02", "2015/01/01")
 	cache.New(getCNStocks())
 
-	p := util.NewPool()
+	p := structx.NewPool[string]()
 	for _, code := range getCNStocks() {
 		p.NewTask(func(strs ...string) {
 			id := strs[0]

@@ -19,16 +19,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// In slice
-func In[T string | int](n T, arr []T) bool {
-	for i := range arr {
-		if n == arr[i] {
-			return true
-		}
-	}
-	return false
-}
-
 // Expressions
 func Exp[T string | int | float64](isTrue bool, yes T, no T) T {
 	if isTrue {
@@ -138,24 +128,6 @@ func IsChinese(str string) bool {
 		}
 	}
 	return false
-}
-
-// Mean 均值
-func Mean[T int | int64 | float64](arr []T) float64 {
-	var sum T
-	for _, i := range arr {
-		sum += i
-	}
-	return float64(sum) / float64(len(arr))
-}
-
-// Sum 求和
-func Sum(arr ...float64) float64 {
-	var sum float64
-	for _, i := range arr {
-		sum += i
-	}
-	return sum
 }
 
 // Go Job for every duration
