@@ -18,8 +18,8 @@ require (
 	github.com/qiniu/qmgo v1.1.4
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/viper v1.14.0
-	github.com/xgzlucario/structx v0.2.2
-	go.mongodb.org/mongo-driver v1.11.0
+	github.com/xgzlucario/structx v0.2.4
+	go.mongodb.org/mongo-driver v1.11.1
 	gonum.org/v1/gonum v0.12.0
 )
 
@@ -37,7 +37,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.2 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -55,12 +55,12 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
-	github.com/xdg-go/scram v1.1.1 // indirect
-	github.com/xdg-go/stringprep v1.0.3 // indirect
+	github.com/xdg-go/scram v1.1.2 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
 	golang.org/x/arch v0.2.0 // indirect
 	golang.org/x/crypto v0.4.0 // indirect
-	golang.org/x/exp v0.0.0-20221208044002-44028be4359e // indirect
+	golang.org/x/exp v0.0.0-20221208152030-732eee02a75a // indirect
 	golang.org/x/net v0.4.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect

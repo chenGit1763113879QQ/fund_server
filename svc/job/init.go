@@ -40,9 +40,6 @@ func init() {
 	// kline & predict
 	util.GoJob(func() {
 		initKline()
-		loadKline()
-
 		WinRate()
-		PredictStock()
 	}, time.Hour*24, time.Second*3)
 }

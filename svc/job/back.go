@@ -1,7 +1,6 @@
 package job
 
 import (
-	"fund/cache"
 	"fund/db"
 	"fund/model"
 
@@ -16,26 +15,26 @@ type backFunc func(k *model.Kline) bool
 
 // run back test
 func runBackTest(backType string, arg float64, argName string, buy backFunc, sell backFunc) {
-	// init collection
-	coll := db.BackDB.Collection(backType)
-	coll.EnsureIndexes(ctx, []string{"code,arg"}, nil)
+	// // init collection
+	// coll := db.BackDB.Collection(backType)
+	// coll.EnsureIndexes(ctx, []string{"code,arg"}, nil)
 
-	bulk := coll.Bulk()
+	// bulk := coll.Bulk()
 
-	// run
-	cache.RangeKline(func(id string, klines []*model.Kline) {
-		trade := model.NewTrade(id, arg, argName)
-		for _, k := range klines {
-			if buy(k) {
-				trade.Buy(k)
+	// // run
+	// cache.RangeKline(func(id string, klines []*model.Kline) {
+	// 	trade := model.NewTrade(id, arg, argName)
+	// 	for _, k := range klines {
+	// 		if buy(k) {
+	// 			trade.Buy(k)
 
-			} else if sell(k) {
-				trade.Sell(k)
-			}
-		}
-		bulk.InsertOne(trade)
-	})
-	bulk.Run(ctx)
+	// 		} else if sell(k) {
+	// 			trade.Sell(k)
+	// 		}
+	// 	}
+	// 	bulk.InsertOne(trade)
+	// })
+	// bulk.Run(ctx)
 }
 
 func WinRate() {

@@ -105,8 +105,8 @@ func getMinuteKline(strs ...string) {
 
 		if !tradeDate.IsZero() && t.Day() > tradeDate.Day() {
 			bulk.InsertOne(bson.M{
-				"code":       id,
-				"price":      oneness(price),
+				"code": id,
+				// "price":      oneness(price),
 				"trade_date": t.Format("2006/01/02"),
 			})
 			price = make([]float64, 0)
