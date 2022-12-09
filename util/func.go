@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/bytedance/sonic"
@@ -18,15 +17,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/viper"
 )
-
-// Expressions
-func Exp[T string | int | float64](isTrue bool, yes T, no T) T {
-	if isTrue {
-		return yes
-	} else {
-		return no
-	}
-}
 
 // Http get and read
 func GetAndRead(url string) ([]byte, error) {
@@ -128,19 +118,6 @@ func IsChinese(str string) bool {
 		}
 	}
 	return false
-}
-
-// Go Job for every duration
-func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
-	go func() {
-		for _, dl := range delay {
-			time.Sleep(dl)
-		}
-		for {
-			f()
-			time.Sleep(duration)
-		}
-	}()
 }
 
 // Unmarshal JSON
