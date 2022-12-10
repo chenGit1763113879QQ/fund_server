@@ -121,6 +121,7 @@ func getMinuteKline(strs ...string) {
 }
 
 func getWinRate(id string) {
+	return
 	if !util.IsCNStock(id) {
 		return
 	}

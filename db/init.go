@@ -27,7 +27,6 @@ var (
 	MinuteDB *qmgo.Database
 
 	Stock   *qmgo.Collection
-	Predict *qmgo.Collection
 	Fina    *qmgo.Collection
 	Minute  *qmgo.Collection
 
@@ -56,9 +55,6 @@ func init() {
 
 	Stock = FundDB.Collection("stock")
 	Stock.EnsureIndexes(ctx, []string{"symbol"}, []string{"marketType", "type"})
-
-	Predict = FundDB.Collection("predict")
-	Predict.EnsureIndexes(ctx, []string{"src_code,match_code,period"}, nil)
 
 	Fina = FundDB.Collection("fina")
 	Fina.EnsureIndexes(ctx, nil, []string{"ts_code", "end_type"})

@@ -10,7 +10,6 @@ import (
 	"fund/util"
 	"fund/util/mongox"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/qiniu/qmgo"
@@ -146,27 +145,6 @@ func AllBKDetails(c *gin.Context) {
 				"price": 1, "mc": 1, "followers": 1,
 			},
 		}).Do()).All(&data)
-
-	midware.Success(c, data)
-}
-
-// PredictKline 获取预测K线结果
-func PredictKline(c *gin.Context) {
-	data := make([]bson.M, 0)
-	period, _ := strconv.Atoi(c.Query("period"))
-
-	db.Predict.Aggregate(ctx, mongox.Pipeline().
-		Match(bson.M{"src_code": c.Query("code"), "period": period}).
-		Sort(bson.M{"std": 1}).
-		Lookup("stock", "src_code", "_id", "src_code").
-		Lookup("stock", "match_code", "_id", "match_code").
-		Project(bson.M{
-			"_id": 0, "period": 1, "std": 1,
-			"start_date": 1, "end_date": 1,
-			"src_code": 1, "match_code": 1,
-		}).
-		Unwind("$src_code").
-		Unwind("$match_code").Do()).All(&data)
 
 	midware.Success(c, data)
 }

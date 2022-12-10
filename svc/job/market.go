@@ -13,6 +13,7 @@ import (
 )
 
 func getDistribution(m *model.Market) {
+	return
 	var data []struct {
 		Count int64 `bson:"count"`
 	}
