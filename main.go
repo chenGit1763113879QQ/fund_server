@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fund/midware"
 	"fund/svc/stock"
-	"fund/svc/user"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,14 +12,6 @@ func main() {
 
 	api := r.Group("/api")
 	ws := r.Group("/ws")
-
-	api.Group("/user").
-		GET("/emailCode", user.EmailCode).
-		POST("/login", user.Login).
-		POST("/newAuth", user.Register)
-
-	api.Use(midware.Authorize)
-	ws.Use(midware.Authorize)
 
 	ws.Group("/stock").
 		GET("/detail", stock.ConnectItems).
