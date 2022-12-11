@@ -26,9 +26,6 @@ func main() {
 		GET("/portfolio", stock.GetPortfolio).
 		GET("/hot", stock.GetHotStock)
 
-	api.Group("back").
-		GET("/logs", stock.GetBackLogs)
-
 	api.Group("/market").
 		GET("/bk", stock.AllBKDetails)
 

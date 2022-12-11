@@ -2,7 +2,6 @@ package model
 
 import (
 	"fund/util"
-	"time"
 
 	"github.com/mozillazg/go-pinyin"
 )
@@ -156,38 +155,4 @@ type Kline struct {
 	HoldVolHK   int64   `bson:"hold_vol_hk,omitempty" mapstructure:"hold_volume_hk"`
 	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" mapstructure:"hold_ratio_hk"`
 	NetVolHK    int64   `bson:"net_vol_hk,omitempty" mapstructure:"net_volume_hk"`
-}
-
-type PreKline struct {
-	Time  []int64
-	Close []float64
-}
-
-func (x *PreKline) Len() int {
-	if x == nil || x.Close == nil {
-		return -1
-	}
-	return len(x.Close)
-}
-
-type PredictRes struct {
-	Period    int
-	Limit     int
-	Std       float64
-	SrcCode   string    `bson:"src_code"`
-	MatchCode string    `bson:"match_code"`
-	StartDate time.Time `bson:"start_date"`
-	PrePctChg float64   `bson:"pre_pct_chg"`
-}
-
-type PredictArr []*PredictRes
-
-func (x PredictArr) Len() int {
-	return len(x)
-}
-func (x PredictArr) Less(i, j int) bool {
-	return x[i].Std < x[j].Std
-}
-func (x PredictArr) Swap(i, j int) {
-	x[i], x[j] = x[j], x[i]
 }

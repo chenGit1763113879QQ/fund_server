@@ -67,9 +67,6 @@ func getKline(strs ...string) {
 	coll.InsertMany(ctx, klines)
 
 	db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*24)
-
-	// winner_rate
-	getWinRate(id)
 }
 
 func getMinuteKline(strs ...string) {
@@ -105,8 +102,8 @@ func getMinuteKline(strs ...string) {
 
 		if !tradeDate.IsZero() && t.Day() > tradeDate.Day() {
 			bulk.InsertOne(bson.M{
-				"code": id,
-				// "price":      oneness(price),
+				"code":       id,
+				"price":      price,
 				"trade_date": t.Format("2006/01/02"),
 			})
 			price = make([]float64, 0)
@@ -118,40 +115,4 @@ func getMinuteKline(strs ...string) {
 
 	bulk.Run(ctx)
 	db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*24)
-}
-
-func getWinRate(id string) {
-	return
-	if !util.IsCNStock(id) {
-		return
-	}
-	// find cache
-	if ok, _ := db.LimitDB.Exists(ctx, "winner_rate:"+id).Result(); ok > 0 {
-		return
-	}
-
-	var data []*struct {
-		TradeDate  string  `bson:"-" mapstructure:"trade_date"`
-		WeightAvg  float64 `bson:"weight_avg" mapstructure:"weight_avg"`
-		WinnerRate float64 `bson:"winner_rate" mapstructure:"winner_rate"`
-	}
-	err := util.TushareApi(
-		"cyq_perf",
-		bson.M{"ts_code": id}, "trade_date,weight_avg,winner_rate", &data,
-	)
-	if err != nil {
-		log.Error().Msg(err.Error())
-		return
-	}
-
-	bulk := db.KlineDB.Collection(util.Md5Code(id)).Bulk()
-
-	// save db
-	for _, i := range data {
-		t, _ := time.Parse("20060102", i.TradeDate)
-		bulk.UpdateOne(bson.M{"code": id, "time": t.Unix()}, bson.M{"$set": i})
-	}
-	bulk.Run(ctx)
-
-	db.LimitDB.Set(ctx, "winner_rate:"+id, 1, time.Hour*24)
 }

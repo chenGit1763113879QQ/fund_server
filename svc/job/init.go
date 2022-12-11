@@ -40,9 +40,6 @@ func init() {
 		}
 	}, time.Hour*24)
 
-	// kline & predict
-	// structx.GoJob(func() {
-	// 	initKline()
-	// 	WinRate()
-	// }, time.Hour*24)
+	// kline
+	structx.GoJob(initKline, time.Hour*24)
 }
