@@ -13,58 +13,61 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func getCategoryIndustries(m *model.Market) {
+func getIndustries(m *model.Market) {
 	// industry
-	url := fmt.Sprintf("https://xueqiu.com/service/screener/industries?category=%s", m.StrMarket)
-	body, _ := util.GetAndRead(url)
-
-	var idsData []*model.Industry
-	util.UnmarshalJSON(body, &idsData, "data", "industries")
-
-	// stock
-	url = fmt.Sprintf("https://xueqiu.com/service/screener/screen?category=%s&areacode=&indcode=&size=6000&only_count=0", m.StrMarket)
-	body, _ = util.GetAndRead(url)
-
-	var stock []*struct {
-		Code    string `json:"symbol"`
-		IndCode string `json:"indcode"`
-	}
-	util.UnmarshalJSON(body, &stock, "data", "list")
-	for _, s := range stock {
-		s.Code = util.ParseCode(s.Code)
+	url := fmt.Sprintf("https://xueqiu.com/service/screener/industries?category=%v", m.Market)
+	body, err := util.GetAndRead(url)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return
 	}
 
-	// save
-	bulk := db.Stock.Bulk()
+	var industries []*model.Industry
+	util.UnmarshalJSON(body, &industries, "data", "industries")
 
-	for _, ids := range idsData {
-		// set basic
-		ids.Id = ids.Symbol
-		ids.MarketType = m.Market
-		ids.Type = util.IDS
-		ids.AddPinYin(ids.Name)
+	for _, item := range industries {
+		// industry set basic
+		item.Id = item.Symbol
+		item.MarketType = m.Market
+		item.Type = util.IDS
+		item.AddPinYin(item.Name)
 
-		// save
-		bulk.UpsertId(ids.Id, ids)
-
-		// members
-		for _, stk := range stock {
-			if ids.Id == stk.IndCode {
-				// members
-				bulk.UpdateId(ids.Id, bson.M{"$addToSet": bson.M{"members": stk.Code}})
-				// bk
-				bulk.UpdateId(stk.Code, bson.M{"$addToSet": bson.M{"bk": ids.Id}})
-			}
+		// stock
+		url = fmt.Sprintf("https://xueqiu.com/service/screener/screen?category=%v&indcode=%v&size=500&only_count=0", m.Market, item.Symbol)
+		body, err = util.GetAndRead(url)
+		if err != nil {
+			log.Error().Msg(err.Error())
 		}
+
+		var stock []*struct {
+			Code string `json:"symbol"`
+		}
+		util.UnmarshalJSON(body, &stock, "data", "list")
+
+		item.Members = make([]string, len(stock))
+
+		bulk := db.Stock.Bulk()
+		fmt.Println(item.Id, item.MarketType, item.Name, len(stock))
+
+		for i, s := range stock {
+			s.Code = util.ParseCode(s.Code)
+			// stock bk
+			bulk.UpdateId(s.Code, bson.M{"$set": bson.M{"bk": item.Id}})
+
+			item.Members[i] = s.Code
+		}
+		// save
+		bulk.UpsertId(item.Id, item)
+		bulk.Run(ctx)
 	}
-	bulk.Run(ctx)
-	log.Info().Msgf("init industry[%s] success", m.StrMarket)
+
+	log.Info().Msgf("init industry[%s] success", m.Market)
 }
 
 func getIndustry(m *model.Market) {
 	var data []*model.Industry
 
-	db.Stock.Aggregate(ctx, mongox.Pipeline().
+	err := db.Stock.Aggregate(ctx, mongox.Pipeline().
 		Match(bson.M{"marketType": m.Market, "type": util.IDS}).
 		Lookup("stock", "members", "_id", "c").
 		Project(bson.M{
@@ -82,6 +85,10 @@ func getIndustry(m *model.Market) {
 			"pct_year":  bson.M{"$avg": "$c.pct_year"},
 			"count":     bson.M{"$size": "$c"},
 		}).Do()).All(&data)
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+	}
 
 	bulk := db.Stock.Bulk()
 

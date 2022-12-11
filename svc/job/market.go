@@ -71,7 +71,7 @@ func getMarketStatus() {
 
 	for _, i := range indexes {
 		for _, p := range Markets {
-			if p.StrMarket == i.Market.Region {
+			if string(p.Market) == i.Market.Region {
 				i.Stock.CalData(p)
 				// status
 				p.StatusName = i.Market.StatusName

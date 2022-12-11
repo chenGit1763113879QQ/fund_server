@@ -69,7 +69,7 @@ func GetStockList(c *gin.Context) {
 		db.Stock.Find(ctx, bson.M{"_id": req.Parent}).Distinct("members", &member)
 		query = db.Stock.Find(ctx, bson.M{"_id": bson.M{"$in": member}})
 
-	} else if req.MarketType > 0 {
+	} else if req.MarketType != "" {
 		query = db.Stock.Find(ctx, bson.M{
 			"marketType": req.MarketType, "type": util.STOCK,
 		})

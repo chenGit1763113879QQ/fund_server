@@ -26,11 +26,8 @@ var (
 	BackDB   *qmgo.Database
 	MinuteDB *qmgo.Database
 
-	Stock   *qmgo.Collection
-	Fina    *qmgo.Collection
-	Minute  *qmgo.Collection
-
-	User *qmgo.Collection
+	Stock  *qmgo.Collection
+	Minute *qmgo.Collection
 )
 
 // cache
@@ -55,12 +52,6 @@ func init() {
 
 	Stock = FundDB.Collection("stock")
 	Stock.EnsureIndexes(ctx, []string{"symbol"}, []string{"marketType", "type"})
-
-	Fina = FundDB.Collection("fina")
-	Fina.EnsureIndexes(ctx, nil, []string{"ts_code", "end_type"})
-
-	User = FundDB.Collection("user")
-	User.EnsureIndexes(ctx, []string{"email", "name"}, nil)
 
 	Minute = FundDB.Collection("minute")
 	Minute.EnsureIndexes(ctx, []string{"code,trade_date"}, nil)

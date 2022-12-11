@@ -21,12 +21,11 @@ type Index struct {
 }
 
 type Basic struct {
-	MarketType util.Code `bson:"marketType,omitempty"` // 市场
-	Type       util.Code `bson:"type,omitempty"`       // 类型
-
-	Id         string `bson:"_id"`                   // 代码
-	Pinyin     string `bson:"pinyin,omitempty"`      // 拼音
-	LazyPinyin string `bson:"lazy_pinyin,omitempty"` // 简单拼音
+	Id         string    `bson:"_id"`                   // 代码
+	Pinyin     string    `bson:"pinyin,omitempty"`      // 拼音
+	LazyPinyin string    `bson:"lazy_pinyin,omitempty"` // 简单拼音
+	MarketType util.Code `bson:"marketType,omitempty"`  // 市场
+	Type       util.Code `bson:"type,omitempty"`        // 类型
 }
 
 func (s *Basic) AddPinYin(name string) {
@@ -102,7 +101,8 @@ type Industry struct {
 	Amount  float64
 	Mc      float64
 	Fmc     float64
-	MainNet float64 `bson:"main_net"`
+	MainNet float64  `bson:"main_net"`
+	Members []string `bson:"members"`
 }
 
 func (s *Stock) CalData(m *Market) {

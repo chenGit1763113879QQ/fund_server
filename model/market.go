@@ -11,10 +11,6 @@ type Market struct {
 	count  uint8
 
 	Status bool
-
-	StrMarket string
-	StrType   string `json:"-"`
-
 	StatusName string
 	TradeTime  time.Time
 }

@@ -5,7 +5,6 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
-	"math"
 	"strings"
 	"time"
 
@@ -14,13 +13,11 @@ import (
 )
 
 func getRealStock(m *model.Market) {
-	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=5000&order_by=amount&type=%s", m.StrType)
+	url := fmt.Sprintf("https://xueqiu.com/service/v5/stock/screener/quote/list?size=5000&order_by=amount&market=%v", m.Market)
 
-	for {
-		freq := m.Freq()
-
+	for freq := m.Freq(); ; m.Incr() {
 		if freq == 2 {
-			log.Info().Msgf("update stock[%s]", m.StrType)
+			log.Info().Msgf("update stock[%s]", m.Market)
 		}
 
 		body, err := util.GetAndRead(url)
@@ -29,7 +26,7 @@ func getRealStock(m *model.Market) {
 		}
 
 		var data []*model.Stock
-		util.UnmarshalJSON(body, "data", "list")
+		util.UnmarshalJSON(body, &data, "data", "list")
 
 		bulk := db.Stock.Bulk()
 
@@ -51,21 +48,19 @@ func getRealStock(m *model.Market) {
 		go updateMinute(data, m)
 		go getIndustry(m)
 
-		if freq >= 1 {
-			go getDistribution(m)
+		go getDistribution(m)
 
-			if m.Market == util.CN {
-				go getMainFlow()
-				go getNorthMoney()
-			}
+		if m.Market == util.CN {
+			go getMainFlow()
+			go getNorthMoney()
 		}
+
 		Cond.Broadcast()
-		m.Incr()
 
-		for !m.Status {
-			time.Sleep(time.Millisecond * 100)
-			m.ReSet()
-		}
+		// for !m.Status {
+		// 	time.Sleep(time.Millisecond * 100)
+		// 	m.ReSet()
+		// }
 		time.Sleep(time.Millisecond * 500)
 	}
 }
@@ -98,13 +93,4 @@ func updateMinute(s []*model.Stock, m *model.Market) {
 		)
 	}
 	go bulk.Run(ctx)
-}
-
-func getCNStocks() []string {
-	var id []string
-	db.Stock.Find(ctx, bson.M{
-		"marketType": util.CN, "type": util.STOCK,
-		"mc": bson.M{"$gte": 50 * math.Pow(10, 8)},
-	}).Distinct("_id", &id)
-	return id
 }
