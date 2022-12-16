@@ -5,7 +5,6 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
-	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -20,11 +19,9 @@ func initKline() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.STOCK}).All(&stocks)
 
-	p := structx.NewPool[string](4)
-	// kline
+	p := structx.NewPool[string]()
 	for _, i := range stocks {
 		p.NewTask(getKline, i.Symbol, i.Id)
-		p.NewTask(getMinuteKline, i.Id)
 	}
 	p.Wait()
 	log.Info().Msgf("init kline[%d] success", len(stocks))
@@ -33,7 +30,7 @@ func initKline() {
 func getKline(strs ...string) {
 	symbol, id := strs[0], strs[1]
 	// find cache
-	if ok, _ := db.LimitDB.Exists(ctx, "kline:day:"+id).Result(); ok > 0 {
+	if ok, _ := db.LimitDB.Exists(ctx, "kline:"+id).Result(); ok > 0 {
 		return
 	}
 
@@ -66,53 +63,5 @@ func getKline(strs ...string) {
 	bulk.Run(ctx)
 	coll.InsertMany(ctx, klines)
 
-	db.LimitDB.Set(ctx, "kline:day:"+id, 1, time.Hour*24)
-}
-
-func getMinuteKline(strs ...string) {
-	id := strs[0]
-	if !util.IsCNStock(id) {
-		return
-	}
-	symbol := id
-	if strings.Contains(id, ".SH") {
-		symbol = strings.ReplaceAll(id, ".SH", ".SS")
-	}
-
-	// find cache
-	if ok, _ := db.LimitDB.Exists(ctx, "kline:1m:"+id).Result(); ok > 0 {
-		return
-	}
-
-	url := "https://api-ddc-wscn.xuangubao.cn/market/kline?tick_count=10000&fields=tick_at,close_px&prod_code=" + symbol
-	body, _ := util.GetAndRead(url)
-
-	var data [][]float64
-	util.UnmarshalJSON(body, &data, "data", "candle", id, "lines")
-
-	// coll
-	db.Minute.RemoveAll(ctx, bson.M{"code": id})
-	bulk := db.Minute.Bulk()
-
-	price := make([]float64, 0)
-	var t, tradeDate time.Time
-
-	for _, item := range data {
-		t = time.Unix(int64(item[1]), 0)
-
-		if !tradeDate.IsZero() && t.Day() > tradeDate.Day() {
-			bulk.InsertOne(bson.M{
-				"code":       id,
-				"price":      price,
-				"trade_date": t.Format("2006/01/02"),
-			})
-			price = make([]float64, 0)
-		}
-
-		tradeDate = t
-		price = append(price, item[0])
-	}
-
-	bulk.Run(ctx)
-	db.LimitDB.Set(ctx, "kline:1m:"+id, 1, time.Hour*24)
+	db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*24)
 }

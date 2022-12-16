@@ -57,10 +57,10 @@ func getRealStock(m *model.Market) {
 
 		Cond.Broadcast()
 
-		// for !m.Status {
-		// 	time.Sleep(time.Millisecond * 100)
-		// 	m.ReSet()
-		// }
+		for !m.Status {
+			time.Sleep(time.Millisecond * 100)
+			m.ReSet()
+		}
 		time.Sleep(time.Millisecond * 500)
 	}
 }

@@ -101,7 +101,7 @@ type Industry struct {
 	Mc      float64
 	Fmc     float64
 	MainNet float64  `bson:"main_net"`
-	Members []string `bson:"members"`
+	Members []string `bson:"members,omitempty"`
 }
 
 func (s *Stock) CalData(m *Market) {

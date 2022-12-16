@@ -128,11 +128,7 @@ func UnmarshalJSON(body []byte, data any, path ...any) error {
 
 // ParseCode exp: 000001.SH 00700 AAPL
 func ParseCode(code string) string {
-	pre, suf, ok := strings.Cut(code, ".")
-	if ok && suf == "SS" {
-		// 600519.SS
-		return pre + ".SH"
-	}
+	pre := strings.Split(code, ".")[0]
 	// CN
 	if len(pre) > 2 && (pre[0:2] == "SZ" || pre[0:2] == "SH") {
 		return fmt.Sprintf("%s.%s", pre[2:], pre[0:2])

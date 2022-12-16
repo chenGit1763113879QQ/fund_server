@@ -39,7 +39,7 @@ func getIndustries(m *model.Market) {
 			log.Error().Msg(err.Error())
 		}
 
-		var stock []*struct {
+		var stock []struct {
 			Code string `json:"symbol"`
 		}
 		util.UnmarshalJSON(body, &stock, "data", "list")
@@ -47,8 +47,6 @@ func getIndustries(m *model.Market) {
 		item.Members = make([]string, len(stock))
 
 		bulk := db.Stock.Bulk()
-		fmt.Println(item.Id, item.MarketType, item.Name, len(stock))
-
 		for i, s := range stock {
 			s.Code = util.ParseCode(s.Code)
 			// stock bk
@@ -57,8 +55,9 @@ func getIndustries(m *model.Market) {
 			item.Members[i] = s.Code
 		}
 		// save
-		bulk.UpsertId(item.Id, item)
-		bulk.Run(ctx)
+		bulk.InsertOne(item).UpdateId(item.Id, bson.M{"$set": item}).Run(ctx)
+
+		time.Sleep(time.Second / 10)
 	}
 
 	log.Info().Msgf("init industry[%s] success", m.Market)
