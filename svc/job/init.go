@@ -6,8 +6,6 @@ import (
 	"fund/util"
 	"sync"
 	"time"
-
-	"github.com/xgzlucario/structx"
 )
 
 var (
@@ -25,7 +23,7 @@ var (
 func init() {
 	getMarketStatus()
 	// market status
-	structx.GoJob(getMarketStatus, time.Second)
+	util.GoJob(getMarketStatus, time.Second)
 
 	// stock
 	for _, p := range Markets {
@@ -34,12 +32,12 @@ func init() {
 	time.Sleep(time.Second * 3)
 
 	// industry
-	structx.GoJob(func() {
+	util.GoJob(func() {
 		for _, p := range Markets {
 			go getIndustries(p)
 		}
 	}, time.Hour*24)
 
 	// kline
-	structx.GoJob(initKline, time.Hour*24)
+	util.GoJob(initKline, time.Hour*24)
 }

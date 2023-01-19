@@ -19,16 +19,18 @@ func initKline() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.STOCK}).All(&stocks)
 
-	p := structx.NewPool[string]()
+	p := structx.NewPool()
 	for _, i := range stocks {
-		p.NewTask(getKline, i.Symbol, i.Id)
+		s, id := i.Symbol, i.Id
+		p.Go(func() {
+			getKline(s, id)
+		})
 	}
 	p.Wait()
 	log.Info().Msgf("init kline[%d] success", len(stocks))
 }
 
-func getKline(strs ...string) {
-	symbol, id := strs[0], strs[1]
+func getKline(symbol, id string) {
 	// find cache
 	if ok, _ := db.LimitDB.Exists(ctx, "kline:"+id).Result(); ok > 0 {
 		return

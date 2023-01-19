@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/bytedance/sonic"
@@ -145,4 +146,17 @@ func IsCNStock(code string) bool {
 		}
 	}
 	return false
+}
+
+// Go Job for every duration
+func GoJob(f func(), duration time.Duration, delay ...time.Duration) {
+	go func() {
+		for _, dl := range delay {
+			time.Sleep(dl)
+		}
+		for {
+			f()
+			time.Sleep(duration)
+		}
+	}()
 }
