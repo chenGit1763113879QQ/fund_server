@@ -9,12 +9,12 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/websocket v1.5.0
 	github.com/json-iterator/go v1.1.12
-	github.com/klauspost/compress v1.15.14
+	github.com/klauspost/compress v1.15.15
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mozillazg/go-pinyin v0.19.0
-	github.com/qiniu/qmgo v1.1.4
-	github.com/rs/zerolog v1.28.0
-	github.com/spf13/viper v1.14.0
+	github.com/qiniu/qmgo v1.1.5
+	github.com/rs/zerolog v1.29.0
+	github.com/spf13/viper v1.15.0
 	github.com/xgzlucario/structx v0.5.0
 	go.mongodb.org/mongo-driver v1.11.1
 )
@@ -58,7 +58,7 @@ require (
 	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
 	golang.org/x/arch v0.2.0 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/exp v0.0.0-20230118134722-a68e582fa157 // indirect
+	golang.org/x/exp v0.0.0-20230127140709-cafedaf64729 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect

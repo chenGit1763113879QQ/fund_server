@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -28,7 +28,7 @@ func GetAndRead(url string) ([]byte, error) {
 	}
 	defer res.Body.Close()
 
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 	return body, nil
 }
 
@@ -44,7 +44,7 @@ func XueQiuAPI(url string) ([]byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	return body, nil
 }
 
@@ -70,7 +70,7 @@ func TushareApi(api string, params any, fields any, data any) error {
 	}
 	defer res.Body.Close()
 
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 
 	var src struct {
 		Data struct {
