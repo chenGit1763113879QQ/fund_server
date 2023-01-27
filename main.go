@@ -23,8 +23,7 @@ func main() {
 		GET("/search", stock.Search).
 		GET("/list", stock.GetStockList).
 		GET("/chart/kline", stock.GetKline).
-		GET("/portfolio", stock.GetPortfolio).
-		GET("/hot", stock.GetHotStock)
+		GET("/portfolio", stock.GetPortfolio)
 
 	api.Group("/market").
 		GET("/bk", stock.AllBKDetails)

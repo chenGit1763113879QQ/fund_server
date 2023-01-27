@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	redisHost = "localhost:6380"
-	mongoHost = "localhost:27017"
+	redisHost = "192.168.0.102:6380"
+	mongoHost = "192.168.0.102:27017"
 )
 
 var (

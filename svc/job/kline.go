@@ -32,14 +32,13 @@ func initKline() {
 
 func getKline(symbol, id string) {
 	// find cache
-	if ok, _ := db.LimitDB.Exists(ctx, "kline:"+id).Result(); ok > 0 {
-		return
-	}
+	// if ok, _ := db.LimitDB.Exists(ctx, "kline:"+id).Result(); ok > 0 {
+	// 	return
+	// }
 
 	url := fmt.Sprintf("https://stock.xueqiu.com/v5/stock/chart/kline.json?symbol=%s&type=before&begin=%d&period=day&count=-4500&indicator=kline,pe,pb,ps,pcf,agt,ggt,boll,balance", symbol, time.Now().UnixMilli())
 	body, _ := util.XueQiuAPI(url)
 
-	// unmarshal
 	var data struct {
 		Column []string `json:"column"`
 		Item   [][]any  `json:"item"`
@@ -51,15 +50,38 @@ func getKline(symbol, id string) {
 		return
 	}
 
+	var kbm *model.KlineBitMap
+	var zeroTime, _ = time.Parse("2006-01-02", "2012-01-01")
+
 	// collection
 	coll := db.KlineDB.Collection(util.Md5Code(id))
 	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
 	bulk := coll.Bulk()
 
-	for _, k := range klines {
+	for i, k := range klines {
 		k.Code = id
 		k.Time /= 1000
 		bulk.UpdateOne(bson.M{"code": k.Code, "time": k.Time}, bson.M{"$set": k})
+
+		// bkm
+		dur := time.Unix(k.Time, 0).Sub(zeroTime)
+		// dates diff
+		if dur > 0 {
+			datesDiff := uint64(dur / (time.Hour * 24))
+
+			if k.PctChg > 0 {
+				kbm.PctChg.Add(datesDiff)
+			}
+			if k.MainNet > 0 {
+				kbm.MainNet.Add(datesDiff)
+			}
+			if k.NetVolCN > 0 {
+				kbm.HKHoldNet.Add(datesDiff)
+			}
+			if i > 0 && k.Vol > klines[i-1].Vol {
+				kbm.VolChg.Add(datesDiff)
+			}
+		}
 	}
 	// run
 	bulk.Run(ctx)

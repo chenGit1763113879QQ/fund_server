@@ -187,14 +187,3 @@ func GetPortfolio(c *gin.Context) {
 
 	midware.Success(c, stocks)
 }
-
-// GetHotStock 获取雪球热股
-func GetHotStock(c *gin.Context) {
-	url := XQHOST + "/hot_stock/list.json?size=100&type=10"
-	body, _ := util.XueQiuAPI(url)
-
-	var data []bson.M
-	util.UnmarshalJSON(body, &data, "data", "items")
-
-	midware.Success(c, data)
-}

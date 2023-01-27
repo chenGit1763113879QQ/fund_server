@@ -4,6 +4,7 @@ import (
 	"fund/util"
 
 	"github.com/mozillazg/go-pinyin"
+	"github.com/xgzlucario/structx"
 )
 
 var PinyinArg = pinyin.NewArgs()
@@ -155,4 +156,11 @@ type Kline struct {
 	HoldVolHK   int64   `bson:"hold_vol_hk,omitempty" mapstructure:"hold_volume_hk"`
 	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" mapstructure:"hold_ratio_hk"`
 	NetVolHK    int64   `bson:"net_vol_hk,omitempty" mapstructure:"net_volume_hk"`
+}
+
+type KlineBitMap struct {
+	PctChg    *structx.BitMap // pct_chg > 0 ? 1 : 0
+	VolChg    *structx.BitMap // vol > vol_last ? 1 : 0
+	MainNet   *structx.BitMap // main_net > 0 ? 1 : 0
+	HKHoldNet *structx.BitMap // hk_hold_net > 0 ? 1 : 0
 }

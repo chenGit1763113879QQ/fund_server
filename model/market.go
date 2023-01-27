@@ -10,7 +10,7 @@ type Market struct {
 	Type   util.Code `json:"-"`
 	count  uint8
 
-	Status bool
+	Status     bool
 	StatusName string
 	TradeTime  time.Time
 }

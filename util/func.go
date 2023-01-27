@@ -1,10 +1,8 @@
 package util
 
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -48,49 +46,6 @@ func XueQiuAPI(url string) ([]byte, error) {
 	return body, nil
 }
 
-// TuShare api
-func TushareApi(api string, params any, fields any, data any) error {
-	// set params
-	req := map[string]any{
-		"api_name": api,
-		"token":    viper.GetString("ts_token"),
-	}
-	if params != nil {
-		req["params"] = params
-	}
-	if fields != nil {
-		req["fields"] = fields
-	}
-	param, _ := sonic.Marshal(req)
-
-	// post request
-	res, err := http.Post("https://api.tushare.pro", "application/json", bytes.NewReader(param))
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-
-	body, _ := io.ReadAll(res.Body)
-
-	var src struct {
-		Data struct {
-			Head  []string `json:"fields"`
-			Items [][]any  `json:"items"`
-		} `json:"data"`
-		Msg string `json:"msg"`
-	}
-
-	if err = UnmarshalJSON(body, &src); err != nil {
-		return err
-	}
-	if src.Msg != "" {
-		log.Warn().Msgf("tushare msg: %s", src.Msg)
-		return errors.New(src.Msg)
-	}
-
-	return DecodeJSONItems(src.Data.Head, src.Data.Items, &data)
-}
-
 func DecodeJSONItems(columns []string, items [][]any, data any) error {
 	// decode map
 	srcMap := make([]map[string]any, len(items))
@@ -121,7 +76,7 @@ func IsChinese(str string) bool {
 	return false
 }
 
-// Unmarshal JSON
+// UnmarshalJSON
 func UnmarshalJSON(body []byte, data any, path ...any) error {
 	node := jsoniter.Get(body, path...)
 	return sonic.UnmarshalString(node.ToString(), &data)
