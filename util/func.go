@@ -21,13 +21,12 @@ import (
 func GetAndRead(url string) ([]byte, error) {
 	res, err := http.Get(url)
 	if err != nil {
-		log.Err(err)
+		log.Error().Msg(err.Error())
 		return nil, err
 	}
 	defer res.Body.Close()
 
-	body, _ := io.ReadAll(res.Body)
-	return body, nil
+	return io.ReadAll(res.Body)
 }
 
 // XueQiu api
@@ -37,13 +36,12 @@ func XueQiuAPI(url string) ([]byte, error) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Err(err)
+		log.Error().Msg(err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	return body, nil
+	return io.ReadAll(resp.Body)
 }
 
 func DecodeJSONItems(columns []string, items [][]any, data any) error {
