@@ -4,7 +4,6 @@ import (
 	"fund/util"
 
 	"github.com/mozillazg/go-pinyin"
-	"github.com/xgzlucario/structx"
 )
 
 var PinyinArg = pinyin.NewArgs()
@@ -120,6 +119,14 @@ func (s *Stock) CalData(m *Market) {
 }
 
 type Kline struct {
+	Time int64 `mapstructure:"timestamp"`
+	Vol  int64 `mapstructure:"volume"`
+
+	HoldVolCN int64 `bson:"hold_vol_cn,omitempty" mapstructure:"hold_volume_cn"`
+	NetVolCN  int64 `bson:"net_vol_cn,omitempty" mapstructure:"net_volume_cn"`
+	HoldVolHK int64 `bson:"hold_vol_hk,omitempty" mapstructure:"hold_volume_hk"`
+	NetVolHK  int64 `bson:"net_vol_hk,omitempty" mapstructure:"net_volume_hk"`
+
 	PctChg float64 `bson:"pct_chg" mapstructure:"percent"`
 	Tr     float64 `bson:",omitempty" mapstructure:"turnoverrate"`
 
@@ -128,19 +135,11 @@ type Kline struct {
 	Ps  float64 `bson:",omitempty"`
 	Pcf float64 `bson:",omitempty"`
 
-	Time int64 `mapstructure:"timestamp"`
-
-	Code       string
-	WeightAvg  float64 `bson:"weight_avg,omitempty"`
-	WinnerRate float64 `bson:"winner_rate,omitempty"`
-
-	Open    float64
-	High    float64
-	Low     float64
-	Close   float64
-	Vol     int64 `mapstructure:"volume"`
-	PctRank int64
-	Amount  float64
+	Open   float64
+	High   float64
+	Low    float64
+	Close  float64
+	Amount float64
 
 	MainNet float64 `bson:",omitempty"`
 
@@ -149,18 +148,17 @@ type Kline struct {
 	BOLL_LOW float64 `bson:",omitempty" mapstructure:"lb"`
 	Balance  float64 `bson:",omitempty"`
 
-	HoldVolCN   int64   `bson:"hold_vol_cn,omitempty" mapstructure:"hold_volume_cn"`
 	HoldRatioCN float64 `bson:"hold_ratio_cn,omitempty" mapstructure:"hold_ratio_cn"`
-	NetVolCN    int64   `bson:"net_vol_cn,omitempty" mapstructure:"net_volume_cn"`
-
-	HoldVolHK   int64   `bson:"hold_vol_hk,omitempty" mapstructure:"hold_volume_hk"`
 	HoldRatioHK float64 `bson:"hold_ratio_hk,omitempty" mapstructure:"hold_ratio_hk"`
-	NetVolHK    int64   `bson:"net_vol_hk,omitempty" mapstructure:"net_volume_hk"`
+
+	Code string
+
+	// 过去30日信息
+	Stat KlineStat
 }
 
-type KlineBitMap struct {
-	PctChg    *structx.BitMap // pct_chg > 0 ? 1 : 0
-	VolChg    *structx.BitMap // vol > vol_last ? 1 : 0
-	MainNet   *structx.BitMap // main_net > 0 ? 1 : 0
-	HKHoldNet *structx.BitMap // hk_hold_net > 0 ? 1 : 0
+type KlineStat struct {
+	PctChg    uint64 `bson:"pct_chg"`     // pct_chg > 0 ? 1 : 0
+	MainNet   uint64 `bson:"main_net"`    // main_net > 0 ? 1 : 0
+	HKHoldNet uint64 `bson:"hk_hold_net"` // hk_hold_net > 0 ? 1 : 0
 }

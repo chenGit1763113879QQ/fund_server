@@ -5,10 +5,11 @@ import (
 	"fund/db"
 	"fund/model"
 	"fund/util"
+	"runtime"
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"github.com/xgzlucario/structx"
+	"github.com/sourcegraph/conc/pool"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -19,7 +20,7 @@ func initKline() {
 	}
 	db.Stock.Find(ctx, bson.M{"type": util.STOCK}).All(&stocks)
 
-	p := structx.NewPool()
+	p := pool.New().WithMaxGoroutines(runtime.NumCPU())
 	for _, i := range stocks {
 		s, id := i.Symbol, i.Id
 		p.Go(func() {
@@ -50,42 +51,46 @@ func getKline(symbol, id string) {
 		return
 	}
 
-	var kbm *model.KlineBitMap
-	var zeroTime, _ = time.Parse("2006-01-02", "2012-01-01")
-
 	// collection
 	coll := db.KlineDB.Collection(util.Md5Code(id))
 	coll.EnsureIndexes(ctx, []string{"code,time"}, nil)
 	bulk := coll.Bulk()
 
-	for i, k := range klines {
-		k.Code = id
+	for _, k := range klines {
 		k.Time /= 1000
-		bulk.UpdateOne(bson.M{"code": k.Code, "time": k.Time}, bson.M{"$set": k})
+	}
 
-		// bkm
-		dur := time.Unix(k.Time, 0).Sub(zeroTime)
-		// dates diff
-		if dur > 0 {
-			datesDiff := uint64(dur / (time.Hour * 24))
+	const days = 30
 
-			if k.PctChg > 0 {
-				kbm.PctChg.Add(datesDiff)
+	for i := days; i < len(klines); i++ {
+		kline := klines[i]
+
+		// 提取数据范围
+		ranges := klines[i-days : i]
+
+		for j, tmp := range ranges {
+			if tmp.PctChg > 0 {
+				kline.Stat.PctChg |= 1 << j
 			}
-			if k.MainNet > 0 {
-				kbm.MainNet.Add(datesDiff)
+			if tmp.MainNet > 0 {
+				kline.Stat.MainNet |= 1 << j
 			}
-			if k.NetVolCN > 0 {
-				kbm.HKHoldNet.Add(datesDiff)
-			}
-			if i > 0 && k.Vol > klines[i-1].Vol {
-				kbm.VolChg.Add(datesDiff)
+			if tmp.NetVolCN > 0 {
+				kline.Stat.HKHoldNet |= 1 << j
 			}
 		}
 	}
+
+	for _, k := range klines {
+		k.Code = id
+		bulk.UpdateOne(bson.M{"code": k.Code, "time": k.Time}, bson.M{"$set": k})
+	}
+
 	// run
 	bulk.Run(ctx)
 	coll.InsertMany(ctx, klines)
 
-	db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*24)
+	fmt.Println(id)
+
+	// db.LimitDB.Set(ctx, "kline:"+id, 1, time.Hour*24)
 }
